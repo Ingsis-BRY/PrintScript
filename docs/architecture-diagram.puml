@@ -1,0 +1,352 @@
+@startuml
+title Streaming Lexer + Pratt Parser + AST + Interpreter
+
+top to bottom direction
+skinparam packageStyle rectangle
+
+package SourceProcessing {
+    package reader {
+
+        class SourceReader {
+
+            -reader: Reader
+
+            +peek(): Char
+            +next(): Char
+            +hasNext(): Boolean
+
+        }
+
+    }
+    package lexer {
+
+        class Lexer {
+            -sourceReader: SourceReader
+            -currentPosition: Position
+
+            -lookaheadBuffer: Deque<Token>
+
+            +peekToken(): Token
+            +consumeToken(): Token
+
+            -nextToken(): Token
+
+            -readNumber(): Token
+            -readIdentifierOrKeyword(): Token
+            -readString(): Token
+            -readSymbol(): Token
+            -skipWhitespace()
+        }
+
+        interface TokenStream {
+            +peekToken(): Token
+            +consumeToken(): Token
+        }
+
+        class Position {
+            +line: Int
+            +column: Int
+            +offset: Int
+        }
+
+        package tokens {
+            interface Token <<sealed>> {
+                        +position: Position
+                    }
+
+
+                    class IdentifierToken implements Token {
+                        +name: String
+                    }
+
+
+                    class NumberToken implements Token {
+                        +value: Double
+                    }
+
+
+                    class StringToken implements Token {
+                        +value: String
+                    }
+
+
+                    class KeywordToken implements Token {
+                        +keyword: KeywordType
+                    }
+                    enum KeywordType {
+                        LET
+                        PRINT
+                    }
+
+                    class EOFToken implements Token
+
+
+                    class SymbolToken implements Token {
+                            +symbol: SymbolType
+                        }
+
+                        enum SymbolType {
+                            PLUS
+                            MINUS
+                            MULTIPLY
+                            DIVIDE
+                            POWER
+
+                            ASSIGNMENT
+                            COLON
+                            SEMICOLON
+
+                            LEFT_PARENTHESIS
+                            RIGHT_PARENTHESIS
+                        }
+    }
+}
+}
+
+package syntaxAnalysis {
+
+
+    class Parser {
+
+        -tokenStream: TokenStream
+        -currentToken: Token
+
+        +parseProgram(): Program
+        +parseExpression(precedence: Int): Expression
+
+        -parseStatement(): Statement
+        -parsePrefixExpression(): Expression
+        -parseInfixExpression(left: Expression): Expression
+
+        -consume()
+        -expect(token: Token)
+    }
+
+
+    class PrecedenceResolver {
+        +getPrecedence(token: Token): Int
+    }
+
+
+    class ParserError {
+        +message: String
+        +position: Position
+    }
+
+}
+
+package ProgramRepresentation {
+
+    package ast {
+
+
+        class Program {
+            -statements: List<Statement>
+
+            +accept(visitor: ASTVisitor<T>): T
+        }
+
+
+        interface Statement <<sealed>> {
+            +accept(visitor: ASTVisitor<T>): T
+        }
+
+
+        class VariableDeclaration implements Statement {
+            +name: String
+            +type: Type
+            +initializer: Expression
+        }
+
+
+        class Assignment implements Statement {
+            +name: String
+            +value: Expression
+        }
+
+
+        class PrintStatement implements Statement {
+            +expression: Expression
+        }
+
+
+
+        interface Expression <<sealed>> {
+            +accept(visitor: ASTVisitor<T>): T
+        }
+
+
+        class NumberLiteralExpression implements Expression {
+            +value: Double
+        }
+
+
+        class StringLiteralExpression implements Expression {
+            +value: String
+        }
+
+
+        class VariableReferenceExpression implements Expression {
+            +name: String
+        }
+
+
+        class BinaryExpression implements Expression {
+
+            +left: Expression
+            +operator: BinaryOperator
+            +right: Expression
+
+        }
+
+
+        class UnaryExpression implements Expression {
+
+            +operator: UnaryOperator
+            +expression: Expression
+
+        }
+
+
+
+        interface Type <<sealed>>
+
+        class NumberType implements Type
+        class StringType implements Type
+
+
+
+        interface BinaryOperator <<sealed>>
+
+        class AdditionOperator implements BinaryOperator
+        class SubtractionOperator implements BinaryOperator
+        class MultiplicationOperator implements BinaryOperator
+        class DivisionOperator implements BinaryOperator
+        class PowerOperator implements BinaryOperator
+
+
+
+        interface UnaryOperator <<sealed>>
+
+        class NegationOperator implements UnaryOperator
+
+    }
+
+
+    package visitor {
+        interface ASTVisitor<T> {
+
+            +visitProgram(program: Program): T
+
+            +visitVariableDeclaration(variableDeclaration: VariableDeclaration): T
+            +visitAssignment(assignment: Assignment): T
+            +visitPrintStatement(printStatement: PrintStatement): T
+
+            +visitNumberLiteral(numberLiteral: NumberLiteralExpression): T
+            +visitStringLiteral(stringLiteral: StringLiteralExpression): T
+            +visitVariableReference(variableReference: VariableReferenceExpression): T
+            +visitBinaryExpression(binaryExpression: BinaryExpression): T
+            +visitUnaryExpression(unaryExpression: UnaryExpression): T
+
+        }
+    }
+
+}
+
+
+package interpreter {
+
+
+    class Interpreter {
+
+        -environment: Environment
+
+        +execute(program: Program)
+
+        +evaluate(expression: Expression): Value
+
+        -executeStatement(statement: Statement)
+    }
+
+    class Environment {
+
+        -variables: MutableMap<String, Value>
+
+        +declare(name: String, value: Value)
+
+        +assign(name: String, value: Value)
+
+        +lookup(name: String): Value
+
+        +contains(name: String): Boolean
+
+    }
+
+    interface Value <<sealed>>
+
+    class NumberValue implements Value {
+        -value: Double
+    }
+    class StringValue implements Value {
+        -value: String
+    }
+
+}
+
+Lexer *--> SourceReader
+
+SourceReader --> Lexer : provides characters
+
+Lexer --> Token : produces
+
+Lexer o-- Position
+
+Lexer o-- Token : buffers
+
+SymbolToken *--> SymbolType
+KeywordToken *--> KeywordType
+
+Lexer ..|> TokenStream
+
+Parser --> TokenStream : consumes tokens from
+
+Parser --> Program : creates
+
+Parser --> Expression : creates
+
+Parser --> PrecedenceResolver : uses
+
+Program o-- Statement
+
+VariableDeclaration o-- Type
+VariableDeclaration o-- Expression
+
+Assignment o-- Expression
+
+PrintStatement o-- Expression
+
+BinaryExpression o-- BinaryOperator
+
+UnaryExpression o-- UnaryOperator
+
+Interpreter --> Program : executes
+
+Interpreter --> Statement : evaluates
+
+Interpreter --> Expression : evaluates
+
+Interpreter --> Environment
+
+Environment o-- Value
+
+NumberLiteralExpression ..> NumberValue : evaluates to
+
+StringLiteralExpression ..> StringValue : evaluates to
+
+Program --> ASTVisitor : accepts()
+
+Statement --> ASTVisitor : accepts()
+
+Expression --> ASTVisitor : accepts()
+
+@enduml
