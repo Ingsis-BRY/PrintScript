@@ -1,352 +1,417 @@
-@startuml
-title Streaming Lexer + Pratt Parser + AST + Interpreter
+' ============================================================
+'  PrintScript
+'  Diagrama 1: componentes (módulos y dependencias)
+'  Diagrama 2: clases
+' ============================================================
 
-top to bottom direction
-skinparam packageStyle rectangle
+@startuml componentes
+title PrintScript — Componentes (primera entrega)
 
-package SourceProcessing {
-    package reader {
-
-        class SourceReader {
-
-            -reader: Reader
-
-            +peek(): Char
-            +next(): Char
-            +hasNext(): Boolean
-
-        }
-
-    }
-    package lexer {
-
-        class Lexer {
-            -sourceReader: SourceReader
-            -currentPosition: Position
-
-            -lookaheadBuffer: Deque<Token>
-
-            +peekToken(): Token
-            +consumeToken(): Token
-
-            -nextToken(): Token
-
-            -readNumber(): Token
-            -readIdentifierOrKeyword(): Token
-            -readString(): Token
-            -readSymbol(): Token
-            -skipWhitespace()
-        }
-
-        interface TokenStream {
-            +peekToken(): Token
-            +consumeToken(): Token
-        }
-
-        class Position {
-            +line: Int
-            +column: Int
-            +offset: Int
-        }
-
-        package tokens {
-            interface Token <<sealed>> {
-                        +position: Position
-                    }
-
-
-                    class IdentifierToken implements Token {
-                        +name: String
-                    }
-
-
-                    class NumberToken implements Token {
-                        +value: Double
-                    }
-
-
-                    class StringToken implements Token {
-                        +value: String
-                    }
-
-
-                    class KeywordToken implements Token {
-                        +keyword: KeywordType
-                    }
-                    enum KeywordType {
-                        LET
-                        PRINT
-                    }
-
-                    class EOFToken implements Token
-
-
-                    class SymbolToken implements Token {
-                            +symbol: SymbolType
-                        }
-
-                        enum SymbolType {
-                            PLUS
-                            MINUS
-                            MULTIPLY
-                            DIVIDE
-                            POWER
-
-                            ASSIGNMENT
-                            COLON
-                            SEMICOLON
-
-                            LEFT_PARENTHESIS
-                            RIGHT_PARENTHESIS
-                        }
-    }
-}
+package "PrintScript" {
+    [common]      <<módulo>>
+    [token]       <<módulo>>
+    [ast]         <<módulo>>
+    [language]    <<módulo>>
+    [lexer]       <<módulo>>
+    [parser]      <<módulo>>
+    [interpreter] <<módulo>>
+    [pipeline]    <<módulo>>
+    [cli]         <<módulo>>
 }
 
-package syntaxAnalysis {
+note right of [common]
+  Position, Result<T>,
+  catálogo de errores (ADT),
+  ErrorRenderer
+end note
 
+note right of [language]
+  Qué significa "number" en PrintScript
+  y qué devuelve cada operador.
+  Única fuente de verdad.
+end note
+
+note right of [pipeline]
+  Compone lexer + parser y entrega
+  un statement por vez.
+  Lo consumen todas las operaciones.
+end note
+
+[token]       --> [common]
+[ast]         --> [common]
+[language]    --> [common]
+[language]    --> [ast]
+
+[lexer]       --> [token]
+[lexer]       --> [common]
+
+[parser]      --> [token]
+[parser]      --> [ast]
+[parser]      --> [language]
+[parser]      --> [common]
+
+[interpreter] --> [ast]
+[interpreter] --> [language]
+[interpreter] --> [common]
+
+[pipeline]    --> [lexer]
+[pipeline]    --> [parser]
+[pipeline]    --> [common]
+
+[cli]         --> [pipeline]
+[cli]         --> [interpreter]
+[cli]         --> [common]
+
+@enduml
+
+
+@startuml clases
+title PrintScript — Clases (primera entrega)
+
+' ------------------------------------------------------------
+package common {
+
+    class Position {
+        +line: Int
+        +column: Int
+    }
+
+    interface Result<T> <<sealed>>
+
+    class Success<T> implements Result {
+        +value: T
+    }
+
+    class Failure<T> implements Result {
+        +error: PrintScriptError
+    }
+
+    interface PrintScriptError <<sealed>> {
+        +start: Position
+        +end: Position
+    }
+
+    interface LexicalError <<sealed>> extends PrintScriptError
+    class UnexpectedCharacter implements LexicalError {
+        +character: Char
+    }
+    class UnterminatedString implements LexicalError
+
+    interface SyntaxError <<sealed>> extends PrintScriptError
+    class UnexpectedToken implements SyntaxError {
+        +found: String
+        +expected: String
+    }
+    class MissingSemicolon implements SyntaxError
+    class MalformedNumber implements SyntaxError {
+        +lexeme: String
+    }
+
+    interface RuntimeError <<sealed>> extends PrintScriptError
+    class UndeclaredVariable implements RuntimeError {
+        +name: String
+    }
+    class UninitializedVariable implements RuntimeError {
+        +name: String
+    }
+    class DuplicateDeclaration implements RuntimeError {
+        +name: String
+    }
+    class TypeMismatch implements RuntimeError {
+        +expected: String
+        +actual: String
+    }
+    class DivisionByZero implements RuntimeError
+
+    class ErrorRenderer {
+        +render(error: PrintScriptError): String
+    }
+}
+
+' ------------------------------------------------------------
+package token {
+
+    interface Token <<sealed>> {
+        +lexeme: String
+        +start: Position
+        +end: Position
+    }
+
+    class LetToken implements Token
+    class IdentifierToken implements Token {
+        +name: String
+    }
+    class TypeNameToken implements Token {
+        +name: String
+    }
+    class NumberLiteralToken implements Token {
+        +text: String
+    }
+    class StringLiteralToken implements Token {
+        +value: String
+    }
+    class AssignToken implements Token
+    class ColonToken implements Token
+    class SemicolonToken implements Token
+    class PlusToken implements Token
+    class MinusToken implements Token
+    class StarToken implements Token
+    class SlashToken implements Token
+    class LeftParenToken implements Token
+    class RightParenToken implements Token
+}
+
+' ------------------------------------------------------------
+package ast {
+
+    interface Node <<sealed>> {
+        +start: Position
+        +end: Position
+    }
+
+    interface Statement <<sealed>> extends Node
+    interface Expression <<sealed>> extends Node
+
+    class VariableDeclaration implements Statement {
+        +name: String
+        +declaredType: Type
+        +initializer: Expression
+    }
+    class Assignment implements Statement {
+        +name: String
+        +value: Expression
+    }
+    class CallStatement implements Statement {
+        +callee: String
+        +argument: Expression
+    }
+
+    class NumberLiteral implements Expression {
+        +value: Double
+    }
+    class StringLiteral implements Expression {
+        +value: String
+    }
+    class VariableReference implements Expression {
+        +name: String
+    }
+    class BinaryExpression implements Expression {
+        +left: Expression
+        +operator: BinaryOperator
+        +right: Expression
+    }
+
+    interface BinaryOperator <<sealed>>
+    class Addition       implements BinaryOperator
+    class Subtraction    implements BinaryOperator
+    class Multiplication implements BinaryOperator
+    class Division       implements BinaryOperator
+
+    interface Type <<sealed>>
+    class NumberType implements Type
+    class StringType implements Type
+}
+
+' ------------------------------------------------------------
+package language {
+
+    class NumberCodec {
+        +parse(text: String): Result<Double>
+        +render(value: Double): String
+    }
+
+    class OperatorRules {
+        +resultType(op: BinaryOperator, left: Type, right: Type): Result<Type>
+    }
+}
+
+' ------------------------------------------------------------
+package lexer {
+
+    interface SourceReader {
+        +peek(): Char
+        +next(): Char
+        +hasNext(): Boolean
+    }
+
+    class StreamSourceReader implements SourceReader
+
+    class StatementLexer {
+        -reader: SourceReader
+        -line: Int
+        -column: Int
+
+        +hasNext(): Boolean
+        +next(): Result<List<Token>>
+
+        -readToken(): Result<Token>
+        -readNumber(): Result<Token>
+        -readIdentifierOrKeyword(): Result<Token>
+        -readString(): Result<Token>
+        -readSymbol(): Result<Token>
+        -skipWhitespace()
+    }
+}
+
+' ------------------------------------------------------------
+package parser {
 
     class Parser {
+        -numbers: NumberCodec
+        -precedences: PrecedenceTable
 
-        -tokenStream: TokenStream
-        -currentToken: Token
+        +parse(tokens: List<Token>): Result<Statement>
 
-        +parseProgram(): Program
-        +parseExpression(precedence: Int): Expression
-
-        -parseStatement(): Statement
-        -parsePrefixExpression(): Expression
-        -parseInfixExpression(left: Expression): Expression
-
-        -consume()
-        -expect(token: Token)
+        -parseDeclaration(cursor: TokenCursor): Result<Statement>
+        -parseAssignment(cursor: TokenCursor): Result<Statement>
+        -parseCall(cursor: TokenCursor): Result<Statement>
+        -parseExpression(cursor: TokenCursor, precedence: Int): Result<Expression>
+        -parsePrefix(cursor: TokenCursor): Result<Expression>
+        -parseInfix(cursor: TokenCursor, left: Expression): Result<Expression>
     }
 
+    class TokenCursor {
+        -tokens: List<Token>
+        -index: Int
 
-    class PrecedenceResolver {
-        +getPrecedence(token: Token): Int
+        +peek(): Token
+        +consume(): Token
+        +hasNext(): Boolean
     }
 
-
-    class ParserError {
-        +message: String
-        +position: Position
+    class PrecedenceTable {
+        +precedenceOf(token: Token): Int
     }
-
 }
 
-package ProgramRepresentation {
-
-    package ast {
-
-
-        class Program {
-            -statements: List<Statement>
-
-            +accept(visitor: ASTVisitor<T>): T
-        }
-
-
-        interface Statement <<sealed>> {
-            +accept(visitor: ASTVisitor<T>): T
-        }
-
-
-        class VariableDeclaration implements Statement {
-            +name: String
-            +type: Type
-            +initializer: Expression
-        }
-
-
-        class Assignment implements Statement {
-            +name: String
-            +value: Expression
-        }
-
-
-        class PrintStatement implements Statement {
-            +expression: Expression
-        }
-
-
-
-        interface Expression <<sealed>> {
-            +accept(visitor: ASTVisitor<T>): T
-        }
-
-
-        class NumberLiteralExpression implements Expression {
-            +value: Double
-        }
-
-
-        class StringLiteralExpression implements Expression {
-            +value: String
-        }
-
-
-        class VariableReferenceExpression implements Expression {
-            +name: String
-        }
-
-
-        class BinaryExpression implements Expression {
-
-            +left: Expression
-            +operator: BinaryOperator
-            +right: Expression
-
-        }
-
-
-        class UnaryExpression implements Expression {
-
-            +operator: UnaryOperator
-            +expression: Expression
-
-        }
-
-
-
-        interface Type <<sealed>>
-
-        class NumberType implements Type
-        class StringType implements Type
-
-
-
-        interface BinaryOperator <<sealed>>
-
-        class AdditionOperator implements BinaryOperator
-        class SubtractionOperator implements BinaryOperator
-        class MultiplicationOperator implements BinaryOperator
-        class DivisionOperator implements BinaryOperator
-        class PowerOperator implements BinaryOperator
-
-
-
-        interface UnaryOperator <<sealed>>
-
-        class NegationOperator implements UnaryOperator
-
-    }
-
-
-    package visitor {
-        interface ASTVisitor<T> {
-
-            +visitProgram(program: Program): T
-
-            +visitVariableDeclaration(variableDeclaration: VariableDeclaration): T
-            +visitAssignment(assignment: Assignment): T
-            +visitPrintStatement(printStatement: PrintStatement): T
-
-            +visitNumberLiteral(numberLiteral: NumberLiteralExpression): T
-            +visitStringLiteral(stringLiteral: StringLiteralExpression): T
-            +visitVariableReference(variableReference: VariableReferenceExpression): T
-            +visitBinaryExpression(binaryExpression: BinaryExpression): T
-            +visitUnaryExpression(unaryExpression: UnaryExpression): T
-
-        }
-    }
-
-}
-
-
+' ------------------------------------------------------------
 package interpreter {
 
-
     class Interpreter {
-
         -environment: Environment
+        -output: OutputEmitter
+        -operations: ValueOps
+        -numbers: NumberCodec
 
-        +execute(program: Program)
-
-        +evaluate(expression: Expression): Value
-
-        -executeStatement(statement: Statement)
+        +execute(statement: Statement): Result<Unit>
+        -evaluate(expression: Expression): Result<Value>
     }
 
     class Environment {
+        -slots: MutableMap<String, Slot>
 
-        -variables: MutableMap<String, Value>
+        +declare(name: String, type: Type): Result<Unit>
+        +initialize(name: String, value: Value): Result<Unit>
+        +assign(name: String, value: Value): Result<Unit>
+        +lookup(name: String): Result<Value>
+    }
 
-        +declare(name: String, value: Value)
-
-        +assign(name: String, value: Value)
-
-        +lookup(name: String): Value
-
-        +contains(name: String): Boolean
-
+    interface Slot <<sealed>>
+    class Declared implements Slot {
+        +type: Type
+    }
+    class Bound implements Slot {
+        +value: Value
     }
 
     interface Value <<sealed>>
-
     class NumberValue implements Value {
-        -value: Double
+        +value: Double
     }
     class StringValue implements Value {
-        -value: String
+        +value: String
     }
 
+    class ValueOps {
+        -rules: OperatorRules
+        +apply(op: BinaryOperator, left: Value, right: Value): Result<Value>
+    }
+
+    interface OutputEmitter {
+        +emit(line: String)
+    }
+    class ConsoleOutput implements OutputEmitter
+    class CollectingOutput implements OutputEmitter {
+        +lines(): List<String>
+    }
 }
 
-Lexer *--> SourceReader
+' ------------------------------------------------------------
+package pipeline {
 
-SourceReader --> Lexer : provides characters
+    class StatementStream {
+        -lexer: StatementLexer
+        -parser: Parser
 
-Lexer --> Token : produces
+        +hasNext(): Boolean
+        +next(): Result<Statement>
+    }
+}
 
-Lexer o-- Position
+' ------------------------------------------------------------
+package cli {
 
-Lexer o-- Token : buffers
+    enum Operation {
+        VALIDATION
+        EXECUTION
+    }
 
-SymbolToken *--> SymbolType
-KeywordToken *--> KeywordType
+    class Cli {
+        +run(operation: Operation, file: Path, version: String)
+        -execute(stream: StatementStream)
+        -validate(stream: StatementStream)
+        -report(error: PrintScriptError)
+    }
 
-Lexer ..|> TokenStream
+    class ProgressPrinter {
+        +statementParsed(position: Position)
+    }
+}
 
-Parser --> TokenStream : consumes tokens from
+' ------------------------------------------------------------
+' Relaciones
+' ------------------------------------------------------------
 
-Parser --> Program : creates
+StatementLexer *--> SourceReader
+StatementLexer ..> Token : construye
+Token *--> Position
 
-Parser --> Expression : creates
+Parser ..> Token : consume
+Parser *--> TokenCursor
+Parser *--> PrecedenceTable
+Parser --> NumberCodec : convierte literales
+Parser ..> Statement : construye
+Node *--> Position
 
-Parser --> PrecedenceResolver : uses
+VariableDeclaration o--> Type
+VariableDeclaration o--> Expression
+Assignment o--> Expression
+CallStatement o--> Expression
+BinaryExpression o--> BinaryOperator
 
-Program o-- Statement
+OperatorRules ..> Type
 
-VariableDeclaration o-- Type
-VariableDeclaration o-- Expression
+StatementStream *--> StatementLexer
+StatementStream *--> Parser
 
-Assignment o-- Expression
+Interpreter *--> Environment
+Interpreter *--> ValueOps
+Interpreter --> OutputEmitter
+Interpreter --> NumberCodec : imprime números
+Interpreter ..> Statement : ejecuta
+Environment o--> Slot
+Slot o--> Value
+ValueOps --> OperatorRules
 
-PrintStatement o-- Expression
+Cli --> StatementStream : consume
+Cli --> Interpreter
+Cli --> ErrorRenderer
+Cli *--> ProgressPrinter
 
-BinaryExpression o-- BinaryOperator
-
-UnaryExpression o-- UnaryOperator
-
-Interpreter --> Program : executes
-
-Interpreter --> Statement : evaluates
-
-Interpreter --> Expression : evaluates
-
-Interpreter --> Environment
-
-Environment o-- Value
-
-NumberLiteralExpression ..> NumberValue : evaluates to
-
-StringLiteralExpression ..> StringValue : evaluates to
-
-Program --> ASTVisitor : accepts()
-
-Statement --> ASTVisitor : accepts()
-
-Expression --> ASTVisitor : accepts()
+StatementLexer ..> Result : devuelve
+Parser ..> Result : devuelve
+Interpreter ..> Result : devuelve
+Result ..> PrintScriptError
+ErrorRenderer ..> PrintScriptError : abre el ADT
 
 @enduml
