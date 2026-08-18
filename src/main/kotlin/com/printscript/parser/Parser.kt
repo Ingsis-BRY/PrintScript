@@ -57,12 +57,10 @@ object Parser {
                 is Failure -> return right
 
                 is Success -> {
-                    currentLeft = Expression.BinaryExpression(
+                    currentLeft = createBinaryExpression(
                         left = currentLeft,
                         operator = operator,
-                        right = right.value,
-                        start = currentLeft.start,
-                        end = right.value.end
+                        right = right.value
                     )
                 }
             }
@@ -70,6 +68,22 @@ object Parser {
 
         return Success(currentLeft)
     }
+
+    /**
+     * creates a binary expression from its left operand, operator, and right operand
+     */
+    private fun createBinaryExpression(
+        left: Expression,
+        operator: BinaryOperator,
+        right: Expression
+    ): Expression =
+        Expression.BinaryExpression(
+            left = left,
+            operator = operator,
+            right = right,
+            start = left.start,
+            end = right.end
+        )
 
     /**
      * parses the atomic expressions that can appear before a binary operator
@@ -84,8 +98,17 @@ object Parser {
                     position = Position(0, 0)
                 )
             )
+        return parsePrimaryToken(cursor, token)
+    }
 
-        return when (token) {
+    /**
+     * parses a token into the corresponding primary expression
+     */
+    private fun parsePrimaryToken(
+        cursor: TokenCursor,
+        token: Token
+    ): Result<Expression> =
+        when (token) {
             is Token.NumberLiteralToken ->
                 parseNumber(token)
 
@@ -113,7 +136,6 @@ object Parser {
             else ->
                 unexpectedToken(token)
         }
-    }
 
     /**
      * parses a numeric literal using [NumberCodec], preserving its source position
