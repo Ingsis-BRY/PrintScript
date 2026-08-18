@@ -75,12 +75,14 @@ class Lexer(
             consumed.add(current)
             lexeme.append(current.value)
 
-            val states = alive.map { recognizer -> recognizer to recognizer.recognize(lexeme.toString()) }
+            val currentLexeme = lexeme.toString()
+
+            val states = alive.map { recognizer -> recognizer to recognizer.recognize(currentLexeme) }
 
             val accepted = states.firstOrNull { (_, state) -> state == RecognizerState.Accepted }
 
             if (accepted != null) {
-                best = Match(accepted.first, lexeme.toString(), current.position)
+                best = Match(accepted.first, currentLexeme, current.position)
             }
 
             alive = states
