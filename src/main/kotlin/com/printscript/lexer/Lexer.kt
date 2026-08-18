@@ -19,7 +19,8 @@ import com.printscript.token.Token
  * the next token. Only that overshoot is ever held in memory, so the source is
  * never buffered whole.
  *
- * Errors are reported as [Failure]; nothing is thrown.
+ * Errors are reported as [Failure]; nothing is thrown, including the I/O
+ * failures the reader surfaces as [SourceChar.Failed].
  */
 class Lexer(
     private val reader: SourceReader,
@@ -27,6 +28,8 @@ class Lexer(
 ) {
 
     private val pending: ArrayDeque<PositionedChar> = ArrayDeque()
+
+    private var unreadFailure: Diagnostic? = null
 
     private var line: Int = 1
     private var column: Int = 1
@@ -54,7 +57,8 @@ class Lexer(
     private fun nextToken(): Result<Token>? {
         skipWhitespace()
 
-        val start = peekChar()?.position ?: return null
+        val start = peekChar()?.position
+            ?: return takeSourceFailure()
 
         return scanToken(start)
     }
@@ -169,6 +173,14 @@ class Lexer(
                 current
             }
 
+            is SourceChar.Failed -> {
+                unreadFailure = Diagnostic(
+                    message = "Could not read source: ${sourceChar.message}",
+                    position = Position(line, column)
+                )
+                null
+            }
+
             SourceChar.EndOfSource -> null
         }
     }
@@ -182,6 +194,17 @@ class Lexer(
         for (index in chars.indices.reversed()) {
             pending.addFirst(chars[index])
         }
+    }
+
+    /**
+     * hands over the I/O failure that ended the source, once
+     */
+    private fun takeSourceFailure(): Failure? {
+        val failure = unreadFailure ?: return null
+
+        unreadFailure = null
+
+        return Failure(failure)
     }
 
     /**

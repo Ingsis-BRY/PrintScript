@@ -124,6 +124,7 @@ abstract class SourceReaderTest {
             when (val sourceChar = reader.next()) {
                 is SourceChar.Character -> consumed.append(sourceChar.value)
                 SourceChar.EndOfSource -> fail("next returned end of source while hasNext was true")
+                is SourceChar.Failed -> fail("next returned a failure: ${sourceChar.message}")
             }
         }
 

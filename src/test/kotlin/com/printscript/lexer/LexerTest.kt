@@ -3,8 +3,11 @@ package com.printscript.lexer
 import com.printscript.common.Diagnostic
 import com.printscript.common.Failure
 import com.printscript.common.Position
+import com.printscript.common.Result
 import com.printscript.common.Success
 import com.printscript.token.Token
+import java.io.IOException
+import java.io.Reader
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
@@ -170,4 +173,65 @@ class LexerTest {
         assertTrue(reader.hasNext(), "the whole source was consumed before it was needed")
     }
 
+    @Test
+    fun `a source that breaks mid stream reports the failure instead of throwing`() {
+        val results = resultsFrom(BreakingReader("x;"))
+
+        assertEquals("x", tokenAt(results, index = 0).lexeme)
+        assertEquals(";", tokenAt(results, index = 1).lexeme)
+
+        assertEquals(
+            Diagnostic("Could not read source: disk went away", Position(1, 3)),
+            failureAt(results, index = 2)
+        )
+    }
+
+    @Test
+    fun `a source that breaks on the first read fails without yielding tokens`() {
+        val results = resultsFrom(BreakingReader(""))
+
+        assertEquals(
+            Diagnostic("Could not read source: disk went away", Position(1, 1)),
+            failureAt(results, index = 0)
+        )
+        assertEquals(1, results.size)
+    }
+
+    @Test
+    fun `the failure is reported once and the stream ends there`() {
+        val results = resultsFrom(BreakingReader("let"))
+
+        assertEquals(2, results.size)
+        assertEquals("let", tokenAt(results, index = 0).lexeme)
+        assertTrue(results[1] is Failure)
+    }
+
+    private fun resultsFrom(reader: Reader): List<Result<Token>> =
+        Lexer(StreamSourceReader(reader)).tokens().toList()
+
+    /**
+     * yields the whole source and then throws instead of signalling a clean end
+     */
+    private class BreakingReader(
+        private val source: String
+    ) : Reader() {
+
+        private var index: Int = 0
+
+        override fun read(buffer: CharArray, offset: Int, length: Int): Int {
+            if (length == 0) {
+                return 0
+            }
+
+            if (index >= source.length) {
+                throw IOException("disk went away")
+            }
+
+            buffer[offset] = source[index++]
+
+            return 1
+        }
+
+        override fun close() {}
+    }
 }
