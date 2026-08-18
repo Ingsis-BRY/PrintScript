@@ -229,6 +229,7 @@ object Parser {
         return parseExpression(cursor, 0)
     }
 
+    //Expression parsing
     /**
      * parses an expression while respecting the minimum operator precedence
      */

@@ -10,7 +10,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
 
-class ParserTest {
+class ExpressionParsingTest {
 
     @Test
     fun `should parse a number literal`() {
