@@ -110,6 +110,9 @@ class Lexer(
     /**
      * reports a lexeme no recognizer could accept, at the position it started on
      *
+     * a source that broke outranks everything: the leftovers of a truncated read
+     * are a consequence of the I/O failure, not a separate lexical problem
+     *
      * a recognizer that owns how the lexeme starts gets to name the problem;
      * otherwise the first character is simply not one a token can begin with
      *
@@ -120,6 +123,8 @@ class Lexer(
         consumed: List<PositionedChar>,
         start: Position
     ): Failure {
+        takeSourceFailure()?.let { return it }
+
         pushBack(consumed.drop(1))
 
         val diagnosis = recognizers.firstNotNullOfOrNull { it.diagnose(lexeme) }

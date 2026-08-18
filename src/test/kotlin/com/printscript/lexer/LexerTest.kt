@@ -206,6 +206,22 @@ class LexerTest {
         assertTrue(results[1] is Failure)
     }
 
+    @Test
+    fun `an io failure outranks the lexical error its own truncation caused`() {
+        // the scan consumes '5', reads '.', hits the failure and backs off to "5",
+        // pushing the dot back; rescanning that dot must not bury the real cause
+        val results = resultsFrom(BreakingReader("5."))
+
+        assertEquals("5", tokenAt(results, index = 0).lexeme)
+
+        assertEquals(
+            Diagnostic("Could not read source: disk went away", Position(1, 3)),
+            failureAt(results, index = 1)
+        )
+
+        assertEquals(2, results.size)
+    }
+
     private fun resultsFrom(reader: Reader): List<Result<Token>> =
         Lexer(StreamSourceReader(reader)).tokens().toList()
 
