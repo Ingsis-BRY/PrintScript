@@ -60,10 +60,12 @@ object Parser {
      */
     private fun parseVariableDeclaration(
         cursor: TokenCursor
-    ): Result<Statement> {
-        val letToken = cursor.consume() as Token.LetToken
-
-        return parseIdentifier(cursor).flatMap { nameToken ->
+    ): Result<Statement> =
+        parseExpectedToken<Token.LetToken>(
+            cursor,
+            "Expected 'let'"
+        ).flatMap { letToken ->
+        parseIdentifier(cursor).flatMap { nameToken ->
             parseColon(cursor).flatMap {
                 parseType(cursor).flatMap { declaredType ->
                     parseOptionalInitializer(cursor).flatMap { initializer ->
