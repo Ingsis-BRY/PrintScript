@@ -186,7 +186,7 @@ class StatementParsingTest {
             failure.error.message
         )
         assertEquals(
-            Position(0, 0),
+            Position(12, 0),
             failure.error.position
         )
     }

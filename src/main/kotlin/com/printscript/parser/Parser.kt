@@ -69,7 +69,7 @@ object Parser {
             parseColon(cursor).flatMap {
                 parseType(cursor).flatMap { declaredType ->
                     parseOptionalInitializer(cursor).flatMap { initializer ->
-                        parseSemicolon(cursor).map { semicolon ->
+                        parseSemicolon(cursor, letToken.start.line).map { semicolon ->
                             Statement.VariableDeclaration(
                                 name = nameToken.lexeme,
                                 declaredType = declaredType,
@@ -93,7 +93,7 @@ object Parser {
         parseIdentifier(cursor).flatMap { nameToken ->
             parseAssign(cursor).flatMap {
                 parseExpression(cursor, 0).flatMap { value ->
-                    parseSemicolon(cursor).map { semicolon ->
+                    parseSemicolon(cursor, value.end.line).map { semicolon ->
                         Statement.Assignment(
                             name = nameToken.lexeme,
                             value = value,
@@ -114,8 +114,8 @@ object Parser {
         parsePrintln(cursor).flatMap { callee ->
             parseLeftParen(cursor).flatMap {
                 parseExpression(cursor, 0).flatMap { argument ->
-                    parseRightParen(cursor).flatMap {
-                        parseSemicolon(cursor).map { semicolon ->
+                    parseRightParen(cursor).flatMap { rightParen ->
+                        parseSemicolon(cursor, rightParen.end.line).map { semicolon ->
                             Statement.CallStatement(
                                 callee = callee.lexeme,
                                 argument = argument,
@@ -181,11 +181,13 @@ object Parser {
         )
 
     private fun parseSemicolon(
-        cursor: TokenCursor
+        cursor: TokenCursor,
+        fallbackLine: Int
     ): Result<Token.SemicolonToken> =
         parseExpectedToken(
             cursor,
-            "Expected ';' at end of statement"
+            "Expected ';' at end of statement",
+            Position(fallbackLine, 0)
         )
     private fun parseLeftParen(
         cursor: TokenCursor
@@ -459,7 +461,8 @@ object Parser {
      */
     private inline fun <reified T : Token> parseExpectedToken(
         cursor: TokenCursor,
-        message: String
+        message: String,
+        fallbackPosition: Position = Position(0, 0)
     ): Result<T> {
         val token = cursor.consume()
 
@@ -469,7 +472,7 @@ object Parser {
             Failure(
                 Diagnostic(
                     message = message,
-                    position = token?.start ?: Position(0, 0)
+                    position = token?.start ?: fallbackPosition
                 )
             )
         }
