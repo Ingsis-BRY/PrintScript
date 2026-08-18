@@ -14,6 +14,10 @@ import com.printscript.token.Token
  * rejects the lexeme, and [diagnose] turns that into the unterminated-string
  * error. The same message covers a source that ends mid-literal, where the
  * automaton is still [RecognizerState.Pending] and never rejected anything.
+ *
+ * The body is walked by index rather than copied out, since the lexer calls
+ * this once per character and a copy per call would cost a literal its length
+ * squared in allocation.
  */
 object StringLiteralRecognizer : TokenRecognizer {
 
@@ -30,14 +34,12 @@ object StringLiteralRecognizer : TokenRecognizer {
             return RecognizerState.Rejected
         }
 
-        val body = lexeme.drop(1)
-
-        for (index in body.indices) {
-            val current = body[index]
+        for (index in 1 until lexeme.length) {
+            val current = lexeme[index]
 
             when {
                 current == quote ->
-                    return if (index == body.lastIndex) {
+                    return if (index == lexeme.lastIndex) {
                         RecognizerState.Accepted
                     } else {
                         RecognizerState.Rejected

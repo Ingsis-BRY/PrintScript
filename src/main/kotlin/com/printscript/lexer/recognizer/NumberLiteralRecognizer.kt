@@ -14,6 +14,9 @@ import com.printscript.token.Token
  *
  * Digits are ASCII on purpose, so `Char.isDigit` is not used: it would also
  * admit digits from other scripts, which `toDouble` cannot read back.
+ *
+ * The whole and fraction parts are checked in place rather than cut out, since
+ * the lexer calls this once per character.
  */
 object NumberLiteralRecognizer : TokenRecognizer {
 
@@ -25,21 +28,25 @@ object NumberLiteralRecognizer : TokenRecognizer {
         val dot = lexeme.indexOf('.')
 
         if (dot < 0) {
-            return if (lexeme.all { isDigit(it) }) {
+            return if (allDigits(lexeme, from = 0, toExclusive = lexeme.length)) {
                 RecognizerState.Accepted
             } else {
                 RecognizerState.Rejected
             }
         }
 
-        val whole = lexeme.substring(0, dot)
-        val fraction = lexeme.substring(dot + 1)
-
         return when {
-            whole.isEmpty() || !whole.all { isDigit(it) } -> RecognizerState.Rejected
-            fraction.isEmpty() -> RecognizerState.Pending
-            fraction.all { isDigit(it) } -> RecognizerState.Accepted
-            else -> RecognizerState.Rejected
+            dot == 0 || !allDigits(lexeme, from = 0, toExclusive = dot) ->
+                RecognizerState.Rejected
+
+            dot == lexeme.lastIndex ->
+                RecognizerState.Pending
+
+            allDigits(lexeme, from = dot + 1, toExclusive = lexeme.length) ->
+                RecognizerState.Accepted
+
+            else ->
+                RecognizerState.Rejected
         }
     }
 
@@ -54,6 +61,16 @@ object NumberLiteralRecognizer : TokenRecognizer {
             start = start,
             end = end
         )
+
+    private fun allDigits(lexeme: String, from: Int, toExclusive: Int): Boolean {
+        for (index in from until toExclusive) {
+            if (!isDigit(lexeme[index])) {
+                return false
+            }
+        }
+
+        return true
+    }
 
     private fun isDigit(value: Char): Boolean =
         value in '0'..'9'

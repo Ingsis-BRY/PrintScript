@@ -22,12 +22,27 @@ object IdentifierRecognizer : TokenRecognizer {
         when {
             lexeme.isEmpty() -> RecognizerState.Pending
             !opensIdentifier(lexeme.first()) -> RecognizerState.Rejected
-            lexeme.drop(1).all { continuesIdentifier(it) } -> RecognizerState.Accepted
+            continuesAfterFirst(lexeme) -> RecognizerState.Accepted
             else -> RecognizerState.Rejected
         }
 
     override fun tokenOf(lexeme: String, start: Position, end: Position): Token =
         Token.IdentifierToken(lexeme, start, end)
+
+    /**
+     * walks the lexeme by index, since the lexer calls this once per character
+     * and copying the tail off every call would cost the identifier its length
+     * squared in allocation
+     */
+    private fun continuesAfterFirst(lexeme: String): Boolean {
+        for (index in 1 until lexeme.length) {
+            if (!continuesIdentifier(lexeme[index])) {
+                return false
+            }
+        }
+
+        return true
+    }
 
     private fun opensIdentifier(value: Char): Boolean =
         value in 'a'..'z' || value in 'A'..'Z' || value == '_'
