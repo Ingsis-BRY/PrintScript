@@ -2,6 +2,8 @@ package com.printscript.parser
 
 import com.printscript.ast.BinaryOperator
 import com.printscript.ast.Expression
+import com.printscript.ast.Statement
+import com.printscript.ast.Type
 import com.printscript.common.Diagnostic
 import com.printscript.common.Failure
 import com.printscript.common.Position
@@ -14,12 +16,224 @@ import com.printscript.token.Token
 
 object Parser {
 
+    //Public API
+    /**
+     * parses a list of tokens into a statement
+     */
+    fun parse(tokens: List<Token>): Result<Statement> =
+        parseStatement(TokenCursor(tokens))
+
     /**
      * parses a list of tokens into an expression using Pratt parsing
      */
     fun parseExpression(tokens: List<Token>): Result<Expression> =
         parseExpression(TokenCursor(tokens), 0)
 
+    //Statement Parsing
+    /**
+     * parses a statement based on its first token
+     */
+    private fun parseStatement(
+        cursor: TokenCursor
+    ): Result<Statement> {
+        val token = cursor.peek()
+            ?: return unexpectedEndOfStatement()
+
+        return when (token) {
+            is Token.LetToken ->
+                parseVariableDeclaration(cursor)
+
+            is Token.IdentifierToken ->
+                if (token.lexeme == "println") {
+                    parseCallStatement(cursor)
+                } else {
+                    parseAssignment(cursor)
+                }
+
+            else ->
+                unexpectedToken(token)
+        }
+    }
+
+    /**
+     * parses a variable declaration with an optional initializer
+     */
+    private fun parseVariableDeclaration(
+        cursor: TokenCursor
+    ): Result<Statement> =
+        parseExpectedToken<Token.LetToken>(
+            cursor,
+            "Expected 'let'"
+        ).flatMap { letToken ->
+        parseIdentifier(cursor).flatMap { nameToken ->
+            parseColon(cursor).flatMap {
+                parseType(cursor).flatMap { declaredType ->
+                    parseOptionalInitializer(cursor).flatMap { initializer ->
+                        parseSemicolon(cursor, letToken.start.line).map { semicolon ->
+                            Statement.VariableDeclaration(
+                                name = nameToken.lexeme,
+                                declaredType = declaredType,
+                                initializer = initializer,
+                                start = letToken.start,
+                                end = semicolon.end
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * parses an assignment to a variable
+     */
+    private fun parseAssignment(
+        cursor: TokenCursor
+    ): Result<Statement> =
+        parseIdentifier(cursor).flatMap { nameToken ->
+            parseAssign(cursor).flatMap {
+                parseExpression(cursor, 0).flatMap { value ->
+                    parseSemicolon(cursor, value.end.line).map { semicolon ->
+                        Statement.Assignment(
+                            name = nameToken.lexeme,
+                            value = value,
+                            start = nameToken.start,
+                            end = semicolon.end
+                        )
+                    }
+                }
+            }
+        }
+
+    /**
+     * parses a println call statement
+     */
+    private fun parseCallStatement(
+        cursor: TokenCursor
+    ): Result<Statement> =
+        parsePrintln(cursor).flatMap { callee ->
+            parseLeftParen(cursor).flatMap {
+                parseExpression(cursor, 0).flatMap { argument ->
+                    parseRightParen(cursor).flatMap { rightParen ->
+                        parseSemicolon(cursor, rightParen.end.line).map { semicolon ->
+                            Statement.CallStatement(
+                                callee = callee.lexeme,
+                                argument = argument,
+                                start = callee.start,
+                                end = semicolon.end
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+    // Statement Components
+    private fun parseIdentifier(
+        cursor: TokenCursor
+    ): Result<Token.IdentifierToken> =
+        parseExpectedToken(
+            cursor,
+            "Expected identifier"
+        )
+
+    private fun parseColon(
+        cursor: TokenCursor
+    ): Result<Token.ColonToken> =
+        parseExpectedToken(
+            cursor,
+            "Expected ':'"
+        )
+
+    /**
+     * parses a type name into its corresponding AST type
+     */
+    private fun parseType(
+        cursor: TokenCursor
+    ): Result<Type> =
+        parseExpectedToken<Token.TypeNameToken>(
+            cursor,
+            "Expected type"
+        ).flatMap { token ->
+            when (token.lexeme) {
+                "number" ->
+                    Success(Type.NumberType)
+
+                "string" ->
+                    Success(Type.StringType)
+
+                else ->
+                    Failure(
+                        Diagnostic(
+                            message = "Unknown type: ${token.lexeme}",
+                            position = token.start
+                        )
+                    )
+            }
+        }
+
+    private fun parseAssign(
+        cursor: TokenCursor
+    ): Result<Token.AssignToken> =
+        parseExpectedToken(
+            cursor,
+            "Expected '='"
+        )
+
+    private fun parseSemicolon(
+        cursor: TokenCursor,
+        fallbackLine: Int
+    ): Result<Token.SemicolonToken> =
+        parseExpectedToken(
+            cursor,
+            "Expected ';' at end of statement",
+            Position(fallbackLine, 0)
+        )
+    private fun parseLeftParen(
+        cursor: TokenCursor
+    ): Result<Token.LeftParenToken> =
+        parseExpectedToken(
+            cursor,
+            "Expected '('"
+        )
+
+    private fun parseRightParen(
+        cursor: TokenCursor
+    ): Result<Token.RightParenToken> =
+        parseExpectedToken(
+            cursor,
+            "Expected ')'"
+        )
+
+    private fun parsePrintln(
+        cursor: TokenCursor
+    ): Result<Token.IdentifierToken> =
+        parseIdentifier(cursor).flatMap { token ->
+            if (token.lexeme == "println") {
+                Success(token)
+            } else {
+                Failure(
+                    Diagnostic(
+                        message = "Expected 'println'",
+                        position = token.start
+                    )
+                )
+            }
+        }
+
+    private fun parseOptionalInitializer(
+        cursor: TokenCursor
+    ): Result<Expression?> {
+        if (cursor.peek() !is Token.AssignToken) {
+            return Success(null)
+        }
+
+        cursor.consume()
+
+        return parseExpression(cursor, 0)
+    }
+
+    //Expression parsing
     /**
      * parses an expression while respecting the minimum operator precedence
      */
@@ -57,12 +271,10 @@ object Parser {
                 is Failure -> return right
 
                 is Success -> {
-                    currentLeft = Expression.BinaryExpression(
+                    currentLeft = createBinaryExpression(
                         left = currentLeft,
                         operator = operator,
-                        right = right.value,
-                        start = currentLeft.start,
-                        end = right.value.end
+                        right = right.value
                     )
                 }
             }
@@ -78,14 +290,19 @@ object Parser {
         cursor: TokenCursor
     ): Result<Expression> {
         val token = cursor.consume()
-            ?: return Failure(
-                Diagnostic(
-                    message = "Unexpected end of expression",
-                    position = Position(0, 0)
-                )
-            )
+            ?: return unexpectedEndOfExpression()
 
-        return when (token) {
+        return parsePrimaryToken(cursor, token)
+    }
+
+    /**
+     * parses a token into the corresponding primary expression
+     */
+    private fun parsePrimaryToken(
+        cursor: TokenCursor,
+        token: Token
+    ): Result<Expression> =
+        when (token) {
             is Token.NumberLiteralToken ->
                 parseNumber(token)
 
@@ -113,7 +330,6 @@ object Parser {
             else ->
                 unexpectedToken(token)
         }
-    }
 
     /**
      * parses a numeric literal using [NumberCodec], preserving its source position
@@ -162,6 +378,22 @@ object Parser {
         }
 
     /**
+     * creates a binary expression from its left operand, operator, and right operand
+     */
+    private fun createBinaryExpression(
+        left: Expression,
+        operator: BinaryOperator,
+        right: Expression
+    ): Expression =
+        Expression.BinaryExpression(
+            left = left,
+            operator = operator,
+            right = right,
+            start = left.start,
+            end = right.end
+        )
+
+    /**
      * maps a binary operator token to its corresponding AST operator
      * assumes [token] has already been identified as a binary operator
      */
@@ -196,6 +428,7 @@ object Parser {
                 expression.copy(start = start, end = end)
         }
 
+    // Diagnostics
     /**
      * creates a diagnostic for an unexpected token
      */
@@ -206,4 +439,42 @@ object Parser {
                 position = token.start
             )
         )
+
+    private fun unexpectedEndOfExpression(): Failure =
+        Failure(
+            Diagnostic(
+                message = "Unexpected end of expression",
+                position = Position(0, 0)
+            )
+        )
+
+    private fun unexpectedEndOfStatement(): Failure =
+        Failure(
+            Diagnostic(
+                message = "Unexpected end of statement",
+                position = Position(0, 0)
+            )
+        )
+
+    /**
+     * consumes a token and verifies that it has the expected type
+     */
+    private inline fun <reified T : Token> parseExpectedToken(
+        cursor: TokenCursor,
+        message: String,
+        fallbackPosition: Position = Position(0, 0)
+    ): Result<T> {
+        val token = cursor.consume()
+
+        return if (token is T) {
+            Success(token)
+        } else {
+            Failure(
+                Diagnostic(
+                    message = message,
+                    position = token?.start ?: fallbackPosition
+                )
+            )
+        }
+    }
 }
