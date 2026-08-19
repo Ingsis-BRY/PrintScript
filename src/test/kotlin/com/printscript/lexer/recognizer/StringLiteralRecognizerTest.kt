@@ -1,5 +1,6 @@
 package com.printscript.lexer.recognizer
 
+import com.printscript.common.LexicalFault
 import com.printscript.common.Position
 import com.printscript.token.Token
 import kotlin.test.Test
@@ -65,9 +66,9 @@ class StringLiteralRecognizerTest {
 
     @Test
     fun `diagnoses anything that opened a quote`() {
-        assertEquals("Unterminated string literal", StringLiteralRecognizer.diagnose("\"ab"))
-        assertEquals("Unterminated string literal", StringLiteralRecognizer.diagnose("\"ab\n"))
-        assertEquals("Unterminated string literal", StringLiteralRecognizer.diagnose("'ab"))
+        assertEquals(LexicalFault.UNTERMINATED_STRING, StringLiteralRecognizer.diagnose("\"ab"))
+        assertEquals(LexicalFault.UNTERMINATED_STRING, StringLiteralRecognizer.diagnose("\"ab\n"))
+        assertEquals(LexicalFault.UNTERMINATED_STRING, StringLiteralRecognizer.diagnose("'ab"))
     }
 
     @Test

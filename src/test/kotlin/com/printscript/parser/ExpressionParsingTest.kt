@@ -2,9 +2,12 @@ package com.printscript.parser
 
 import com.printscript.ast.BinaryOperator
 import com.printscript.ast.Expression
+import com.printscript.common.Diagnostic
 import com.printscript.common.Failure
 import com.printscript.common.Position
+import com.printscript.common.Span
 import com.printscript.common.Success
+import com.printscript.common.SyntaxSymbol
 import com.printscript.token.Token
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -297,8 +300,13 @@ class ExpressionParsingTest {
 
         val failure = assertIs<Failure>(result)
 
-        assertEquals("Malformed number: 1.2.3", failure.error.message)
-        assertEquals(Position(11, 5), failure.error.position)
+        assertEquals(
+            Diagnostic.MalformedNumber(
+                text = "1.2.3",
+                span = Span(Position(11, 5), Position(11, 10))
+            ),
+            failure.error
+        )
     }
 
     @Test
@@ -309,8 +317,13 @@ class ExpressionParsingTest {
 
         val failure = assertIs<Failure>(result)
 
-        assertEquals("Unexpected token: +", failure.error.message)
-        assertEquals(Position(13, 7), failure.error.position)
+        assertEquals(
+            Diagnostic.UnexpectedToken(
+                lexeme = "+",
+                span = Span(Position(13, 7), Position(13, 8))
+            ),
+            failure.error
+        )
     }
 
     @Test
@@ -326,8 +339,14 @@ class ExpressionParsingTest {
 
         val failure = assertIs<Failure>(result)
 
-        assertEquals("Expected closing parenthesis", failure.error.message)
-        assertEquals(Position(15, 4), failure.error.position)
+        // the tokens ran out, so the error lands where the last one ended
+        assertEquals(
+            Diagnostic.ExpectedSymbol(
+                expected = SyntaxSymbol.RIGHT_PAREN,
+                span = Span.at(Position(15, 10))
+            ),
+            failure.error
+        )
     }
 
     @Test

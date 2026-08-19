@@ -4,17 +4,17 @@ import com.printscript.ast.BinaryOperator
 import com.printscript.ast.Type
 import com.printscript.common.Diagnostic
 import com.printscript.common.Failure
-import com.printscript.common.Position
 import com.printscript.common.Result
+import com.printscript.common.Span
 import com.printscript.common.Success
-import com.printscript.common.flatMap
 import com.printscript.language.NumberCodec
 import com.printscript.language.OperatorRules
 
 /**
 * applies a binary operator to two values.
 * the resulting type is decided by [OperatorRules], so the rule of `+` mixing
-* string and number lives in a single place and is not rewritten here.
+* string and number lives in a single place and is not rewritten here. the rule
+* table has no position, so blaming [span] for a rejected pair happens here.
 */
 class ValueOps {
 
@@ -22,21 +22,30 @@ class ValueOps {
         operator: BinaryOperator,
         left: Value,
         right: Value,
-        position: Position
-    ): Result<Value> =
-        OperatorRules.resultType(operator, left.type, right.type).flatMap { resultType ->
-            when (resultType) {
-                Type.StringType -> Success(Value.StringValue(render(left) + render(right)))
-                Type.NumberType -> arithmetic(operator, left, right, position)
-            }
+        span: Span
+    ): Result<Value> {
+        val resultType = OperatorRules.resultType(operator, left.type, right.type)
+            ?: return Failure(
+                Diagnostic.IncompatibleOperands(
+                    operator = operator,
+                    left = left.type,
+                    right = right.type,
+                    span = span
+                )
+            )
+
+        return when (resultType) {
+            Type.StringType -> Success(Value.StringValue(render(left) + render(right)))
+            Type.NumberType -> arithmetic(operator, left, right, span)
         }
+    }
 
     // a number result is only produced for number + number, so both are numbers here
     private fun arithmetic(
         operator: BinaryOperator,
         left: Value,
         right: Value,
-        position: Position
+        span: Span
     ): Result<Value> {
         val a = (left as Value.NumberValue).value
         val b = (right as Value.NumberValue).value
@@ -47,7 +56,7 @@ class ValueOps {
             BinaryOperator.Multiplication -> Success(Value.NumberValue(a * b))
             BinaryOperator.Division ->
                 if (b == 0.0) {
-                    Failure(Diagnostic("Division by zero.", position))
+                    Failure(Diagnostic.DivisionByZero(span))
                 } else {
                     Success(Value.NumberValue(a / b))
                 }

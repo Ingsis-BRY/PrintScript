@@ -2,12 +2,12 @@ package com.printscript.language
 
 import com.printscript.ast.BinaryOperator
 import com.printscript.ast.Type
-import com.printscript.common.Diagnostic
-import com.printscript.common.Failure
-import com.printscript.common.Position
-import com.printscript.common.Result
-import com.printscript.common.Success
 
+/**
+* the table of which operand types each binary operator accepts, and what it
+* yields. it answers only that question: it has no source position to blame, so
+* the caller that does turns a `null` into the error the user sees.
+*/
 object OperatorRules {
 
     private data class RuleKey(
@@ -60,22 +60,12 @@ object OperatorRules {
         ) to Type.NumberType
     )
 
+    /**
+    * the type the operator produces for these operands, or null if it rejects them
+    */
     fun resultType(
         operator: BinaryOperator,
         left: Type,
         right: Type
-    ): Result<Type> {
-        val resultType = rules[RuleKey(operator, left, right)]
-
-        return if (resultType != null) {
-            Success(resultType)
-        } else {
-            Failure(
-                Diagnostic(
-                    message = "Incompatible types for operator $operator: $left and $right",
-                    position = Position(0, 0)
-                )
-            )
-        }
-    }
+    ): Type? = rules[RuleKey(operator, left, right)]
 }

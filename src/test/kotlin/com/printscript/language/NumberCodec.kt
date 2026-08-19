@@ -1,7 +1,9 @@
 package com.printscript.language
 
+import com.printscript.common.Diagnostic
 import com.printscript.common.Failure
 import com.printscript.common.Position
+import com.printscript.common.Span
 import com.printscript.common.Success
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -9,14 +11,13 @@ import kotlin.test.assertIs
 
 class NumberCodecTest {
 
-    private val position = Position(1, 1)
+    private val span = Span.at(Position(1, 1))
 
     @Test
     fun `parse integer`() {
         val result = NumberCodec.parse(
             text = "12",
-            start = position,
-            end = position
+            span = span
         )
 
         assertIs<Success<Double>>(result)
@@ -27,8 +28,7 @@ class NumberCodecTest {
     fun `parse decimal`() {
         val result = NumberCodec.parse(
             text = "12.5",
-            start = position,
-            end = position
+            span = span
         )
 
         assertIs<Success<Double>>(result)
@@ -37,17 +37,15 @@ class NumberCodecTest {
 
     @Test
     fun `parse malformed number`() {
-        val start = Position(1, 1)
-        val end = Position(1, 5)
+        val malformed = Span(Position(1, 1), Position(1, 5))
 
         val result = NumberCodec.parse(
             text = "1.2.3",
-            start = start,
-            end = end
+            span = malformed
         )
 
         assertIs<Failure>(result)
-        assertEquals(start, result.error.position)
+        assertEquals(Diagnostic.MalformedNumber("1.2.3", malformed), result.error)
     }
 
     @Test

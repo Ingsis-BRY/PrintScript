@@ -1,7 +1,9 @@
 package com.printscript.lexer
 
 import com.printscript.common.Diagnostic
+import com.printscript.common.LexicalFault
 import com.printscript.common.Position
+import com.printscript.common.Span
 import com.printscript.token.Token
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -79,7 +81,10 @@ class LiteralScanningTest {
     @Test
     fun `a literal left open at the end of the source is reported at its quote`() {
         assertEquals(
-            Diagnostic("Unterminated string literal", Position(1, 1)),
+            Diagnostic.MalformedLexeme(
+                LexicalFault.UNTERMINATED_STRING,
+                Span(Position(1, 1), Position(1, 4))
+            ),
             failureAt(resultsOf("\"abc"), index = 0)
         )
     }
@@ -87,7 +92,10 @@ class LiteralScanningTest {
     @Test
     fun `a literal left open at the end of the line is reported at its quote`() {
         assertEquals(
-            Diagnostic("Unterminated string literal", Position(1, 1)),
+            Diagnostic.MalformedLexeme(
+                LexicalFault.UNTERMINATED_STRING,
+                Span(Position(1, 1), Position(1, 4))
+            ),
             failureAt(resultsOf("\"abc\ndef\""), index = 0)
         )
     }
@@ -95,7 +103,10 @@ class LiteralScanningTest {
     @Test
     fun `an unterminated literal keeps the column it opened on`() {
         assertEquals(
-            Diagnostic("Unterminated string literal", Position(1, 17)),
+            Diagnostic.MalformedLexeme(
+                LexicalFault.UNTERMINATED_STRING,
+                Span(Position(1, 17), Position(1, 20))
+            ),
             failureAt(resultsOf("let x: string = \"abc"), index = 5)
         )
     }
@@ -103,7 +114,10 @@ class LiteralScanningTest {
     @Test
     fun `an unterminated literal keeps the line it opened on`() {
         assertEquals(
-            Diagnostic("Unterminated string literal", Position(3, 3)),
+            Diagnostic.MalformedLexeme(
+                LexicalFault.UNTERMINATED_STRING,
+                Span(Position(3, 3), Position(3, 6))
+            ),
             failureAt(resultsOf("let;\n\n  'abc"), index = 2)
         )
     }
@@ -111,7 +125,10 @@ class LiteralScanningTest {
     @Test
     fun `an unterminated single quoted literal reports the same way`() {
         assertEquals(
-            Diagnostic("Unterminated string literal", Position(1, 1)),
+            Diagnostic.MalformedLexeme(
+                LexicalFault.UNTERMINATED_STRING,
+                Span(Position(1, 1), Position(1, 4))
+            ),
             failureAt(resultsOf("'abc"), index = 0)
         )
     }

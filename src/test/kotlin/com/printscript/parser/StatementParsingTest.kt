@@ -3,9 +3,12 @@ package com.printscript.parser
 import com.printscript.ast.Expression
 import com.printscript.ast.Statement
 import com.printscript.ast.Type
+import com.printscript.common.Diagnostic
 import com.printscript.common.Failure
 import com.printscript.common.Position
+import com.printscript.common.Span
 import com.printscript.common.Success
+import com.printscript.common.SyntaxSymbol
 import com.printscript.token.Token
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -181,13 +184,13 @@ class StatementParsingTest {
 
         val failure = assertIs<Failure>(result)
 
+        // the tokens ran out, so the error lands where the last one ended
         assertEquals(
-            "Expected ';' at end of statement",
-            failure.error.message
-        )
-        assertEquals(
-            Position(12, 0),
-            failure.error.position
+            Diagnostic.ExpectedSymbol(
+                expected = SyntaxSymbol.SEMICOLON,
+                span = Span.at(Position(12, 7))
+            ),
+            failure.error
         )
     }
 
@@ -206,12 +209,11 @@ class StatementParsingTest {
         val failure = assertIs<Failure>(result)
 
         assertEquals(
-            "Expected identifier",
-            failure.error.message
-        )
-        assertEquals(
-            Position(14, 5),
-            failure.error.position
+            Diagnostic.ExpectedSymbol(
+                expected = SyntaxSymbol.IDENTIFIER,
+                span = Span(Position(14, 5), Position(14, 6))
+            ),
+            failure.error
         )
     }
 
@@ -230,12 +232,11 @@ class StatementParsingTest {
         val failure = assertIs<Failure>(result)
 
         assertEquals(
-            "Unknown type: boolean",
-            failure.error.message
-        )
-        assertEquals(
-            Position(16, 8),
-            failure.error.position
+            Diagnostic.UnknownType(
+                name = "boolean",
+                span = Span(Position(16, 8), Position(16, 15))
+            ),
+            failure.error
         )
     }
 
@@ -252,12 +253,11 @@ class StatementParsingTest {
         val failure = assertIs<Failure>(result)
 
         assertEquals(
-            "Expected '='",
-            failure.error.message
-        )
-        assertEquals(
-            Position(18, 3),
-            failure.error.position
+            Diagnostic.ExpectedSymbol(
+                expected = SyntaxSymbol.ASSIGN,
+                span = Span(Position(18, 3), Position(18, 5))
+            ),
+            failure.error
         )
     }
 
@@ -275,12 +275,11 @@ class StatementParsingTest {
         val failure = assertIs<Failure>(result)
 
         assertEquals(
-            "Expected '('",
-            failure.error.message
-        )
-        assertEquals(
-            Position(20, 9),
-            failure.error.position
+            Diagnostic.ExpectedSymbol(
+                expected = SyntaxSymbol.LEFT_PAREN,
+                span = Span(Position(20, 9), Position(20, 11))
+            ),
+            failure.error
         )
     }
 

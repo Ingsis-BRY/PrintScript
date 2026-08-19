@@ -9,6 +9,8 @@ import com.printscript.common.Failure
 import com.printscript.common.Position
 import com.printscript.common.Result
 import com.printscript.common.Success
+import com.printscript.common.SyntacticUnit
+import com.printscript.common.SyntaxSymbol
 import com.printscript.common.flatMap
 import com.printscript.common.map
 import com.printscript.language.NumberCodec
@@ -37,7 +39,7 @@ object Parser {
         cursor: TokenCursor
     ): Result<Statement> {
         val token = cursor.peek()
-            ?: return unexpectedEndOfStatement()
+            ?: return unexpectedEndOfStatement(cursor)
 
         return when (token) {
             is Token.LetToken ->
@@ -63,13 +65,13 @@ object Parser {
     ): Result<Statement> =
         parseExpectedToken<Token.LetToken>(
             cursor,
-            "Expected 'let'"
+            SyntaxSymbol.LET
         ).flatMap { letToken ->
         parseIdentifier(cursor).flatMap { nameToken ->
             parseColon(cursor).flatMap {
                 parseType(cursor).flatMap { declaredType ->
                     parseOptionalInitializer(cursor).flatMap { initializer ->
-                        parseSemicolon(cursor, letToken.start.line).map { semicolon ->
+                        parseSemicolon(cursor).map { semicolon ->
                             Statement.VariableDeclaration(
                                 name = nameToken.lexeme,
                                 declaredType = declaredType,
@@ -93,7 +95,7 @@ object Parser {
         parseIdentifier(cursor).flatMap { nameToken ->
             parseAssign(cursor).flatMap {
                 parseExpression(cursor, 0).flatMap { value ->
-                    parseSemicolon(cursor, value.end.line).map { semicolon ->
+                    parseSemicolon(cursor).map { semicolon ->
                         Statement.Assignment(
                             name = nameToken.lexeme,
                             value = value,
@@ -114,8 +116,8 @@ object Parser {
         parsePrintln(cursor).flatMap { callee ->
             parseLeftParen(cursor).flatMap {
                 parseExpression(cursor, 0).flatMap { argument ->
-                    parseRightParen(cursor).flatMap { rightParen ->
-                        parseSemicolon(cursor, rightParen.end.line).map { semicolon ->
+                    parseRightParen(cursor).flatMap {
+                        parseSemicolon(cursor).map { semicolon ->
                             Statement.CallStatement(
                                 callee = callee.lexeme,
                                 argument = argument,
@@ -134,7 +136,7 @@ object Parser {
     ): Result<Token.IdentifierToken> =
         parseExpectedToken(
             cursor,
-            "Expected identifier"
+            SyntaxSymbol.IDENTIFIER
         )
 
     private fun parseColon(
@@ -142,7 +144,7 @@ object Parser {
     ): Result<Token.ColonToken> =
         parseExpectedToken(
             cursor,
-            "Expected ':'"
+            SyntaxSymbol.COLON
         )
 
     /**
@@ -153,7 +155,7 @@ object Parser {
     ): Result<Type> =
         parseExpectedToken<Token.TypeNameToken>(
             cursor,
-            "Expected type"
+            SyntaxSymbol.TYPE_NAME
         ).flatMap { token ->
             when (token.lexeme) {
                 "number" ->
@@ -163,12 +165,7 @@ object Parser {
                     Success(Type.StringType)
 
                 else ->
-                    Failure(
-                        Diagnostic(
-                            message = "Unknown type: ${token.lexeme}",
-                            position = token.start
-                        )
-                    )
+                    Failure(Diagnostic.UnknownType(token.lexeme, token.span))
             }
         }
 
@@ -177,24 +174,23 @@ object Parser {
     ): Result<Token.AssignToken> =
         parseExpectedToken(
             cursor,
-            "Expected '='"
+            SyntaxSymbol.ASSIGN
         )
 
     private fun parseSemicolon(
-        cursor: TokenCursor,
-        fallbackLine: Int
+        cursor: TokenCursor
     ): Result<Token.SemicolonToken> =
         parseExpectedToken(
             cursor,
-            "Expected ';' at end of statement",
-            Position(fallbackLine, 0)
+            SyntaxSymbol.SEMICOLON
         )
+
     private fun parseLeftParen(
         cursor: TokenCursor
     ): Result<Token.LeftParenToken> =
         parseExpectedToken(
             cursor,
-            "Expected '('"
+            SyntaxSymbol.LEFT_PAREN
         )
 
     private fun parseRightParen(
@@ -202,7 +198,7 @@ object Parser {
     ): Result<Token.RightParenToken> =
         parseExpectedToken(
             cursor,
-            "Expected ')'"
+            SyntaxSymbol.RIGHT_PAREN
         )
 
     private fun parsePrintln(
@@ -212,12 +208,7 @@ object Parser {
             if (token.lexeme == "println") {
                 Success(token)
             } else {
-                Failure(
-                    Diagnostic(
-                        message = "Expected 'println'",
-                        position = token.start
-                    )
-                )
+                Failure(Diagnostic.ExpectedSymbol(SyntaxSymbol.PRINTLN, token.span))
             }
         }
 
@@ -290,7 +281,7 @@ object Parser {
         cursor: TokenCursor
     ): Result<Expression> {
         val token = cursor.consume()
-            ?: return unexpectedEndOfExpression()
+            ?: return unexpectedEndOfExpression(cursor)
 
         return parsePrimaryToken(cursor, token)
     }
@@ -339,8 +330,7 @@ object Parser {
     ): Result<Expression> =
         NumberCodec.parse(
             text = token.value,
-            start = token.start,
-            end = token.end
+            span = token.span
         ).map { value ->
             Expression.NumberLiteral(
                 value = value,
@@ -369,9 +359,9 @@ object Parser {
                 )
             } else {
                 Failure(
-                    Diagnostic(
-                        message = "Expected closing parenthesis",
-                        position = closingParen?.start ?: openingParen.end
+                    Diagnostic.ExpectedSymbol(
+                        expected = SyntaxSymbol.RIGHT_PAREN,
+                        span = closingParen?.span ?: cursor.endOfInput()
                     )
                 )
             }
@@ -428,41 +418,39 @@ object Parser {
                 expression.copy(start = start, end = end)
         }
 
-    // Diagnostics
+    // Errors
     /**
-     * creates a diagnostic for an unexpected token
+     * the parser never words an error: it names the case and the source it
+     * blames, and leaves the sentence to the renderer
      */
     private fun unexpectedToken(token: Token): Failure =
+        Failure(Diagnostic.UnexpectedToken(token.lexeme, token.span))
+
+    private fun unexpectedEndOfExpression(cursor: TokenCursor): Failure =
         Failure(
-            Diagnostic(
-                message = "Unexpected token: ${token.lexeme}",
-                position = token.start
+            Diagnostic.UnexpectedEndOfInput(
+                unit = SyntacticUnit.EXPRESSION,
+                span = cursor.endOfInput()
             )
         )
 
-    private fun unexpectedEndOfExpression(): Failure =
+    private fun unexpectedEndOfStatement(cursor: TokenCursor): Failure =
         Failure(
-            Diagnostic(
-                message = "Unexpected end of expression",
-                position = Position(0, 0)
-            )
-        )
-
-    private fun unexpectedEndOfStatement(): Failure =
-        Failure(
-            Diagnostic(
-                message = "Unexpected end of statement",
-                position = Position(0, 0)
+            Diagnostic.UnexpectedEndOfInput(
+                unit = SyntacticUnit.STATEMENT,
+                span = cursor.endOfInput()
             )
         )
 
     /**
      * consumes a token and verifies that it has the expected type
+     *
+     * a token that is there is blamed over its own span; past the end of the
+     * input there is none, so the error lands where the tokens ran out
      */
     private inline fun <reified T : Token> parseExpectedToken(
         cursor: TokenCursor,
-        message: String,
-        fallbackPosition: Position = Position(0, 0)
+        expected: SyntaxSymbol
     ): Result<T> {
         val token = cursor.consume()
 
@@ -470,9 +458,9 @@ object Parser {
             Success(token)
         } else {
             Failure(
-                Diagnostic(
-                    message = message,
-                    position = token?.start ?: fallbackPosition
+                Diagnostic.ExpectedSymbol(
+                    expected = expected,
+                    span = token?.span ?: cursor.endOfInput()
                 )
             )
         }

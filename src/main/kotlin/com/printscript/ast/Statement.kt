@@ -1,10 +1,9 @@
 package com.printscript.ast
 
+import com.printscript.common.Located
 import com.printscript.common.Position
 
-sealed interface Statement {
-    val start: Position
-    val end: Position
+sealed interface Statement : Located {
 
     data class VariableDeclaration(
         val name: String,

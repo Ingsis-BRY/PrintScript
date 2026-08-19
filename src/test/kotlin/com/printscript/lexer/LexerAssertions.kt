@@ -31,7 +31,7 @@ internal fun singleTokenOf(source: String): Token =
     tokensOf(source).single()
 
 /**
- * Reads the diagnostic of the result at [index], failing the test if it succeeded.
+ * Reads the error of the result at [index], failing the test if it succeeded.
  */
 internal fun failureAt(results: List<Result<Token>>, index: Int): Diagnostic =
     when (val result = results[index]) {

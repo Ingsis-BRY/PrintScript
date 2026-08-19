@@ -4,6 +4,7 @@ import com.printscript.ast.BinaryOperator
 import com.printscript.ast.Expression
 import com.printscript.ast.Statement
 import com.printscript.ast.Type
+import com.printscript.common.Diagnostic
 import com.printscript.common.Failure
 import com.printscript.common.Position
 import com.printscript.common.Result
@@ -117,7 +118,7 @@ class InterpreterTest {
         )
 
         val error = assertIs<Failure>(result).error
-        assertEquals("Division by zero.", error.message)
+        assertIs<Diagnostic.DivisionByZero>(error)
     }
 
     @Test
@@ -127,7 +128,7 @@ class InterpreterTest {
         val result = interpreter.execute(println(reference("missing")))
 
         val error = assertIs<Failure>(result).error
-        assertEquals("Variable 'missing' is not declared.", error.message)
+        assertEquals("missing", assertIs<Diagnostic.VariableNotDeclared>(error).name)
     }
 
     @Test
@@ -158,6 +159,6 @@ class InterpreterTest {
             interpreter.execute(Statement.CallStatement("print", number(1.0), at, at))
 
         val error = assertIs<Failure>(result).error
-        assertEquals("Unknown function 'print'.", error.message)
+        assertEquals("print", assertIs<Diagnostic.UnknownFunction>(error).name)
     }
 }

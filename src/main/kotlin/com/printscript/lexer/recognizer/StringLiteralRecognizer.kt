@@ -1,5 +1,6 @@
 package com.printscript.lexer.recognizer
 
+import com.printscript.common.LexicalFault
 import com.printscript.common.Position
 import com.printscript.token.Token
 
@@ -20,8 +21,6 @@ import com.printscript.token.Token
  * squared in allocation.
  */
 object StringLiteralRecognizer : TokenRecognizer {
-
-    private const val UNTERMINATED = "Unterminated string literal"
 
     override fun recognize(lexeme: String): RecognizerState {
         if (lexeme.isEmpty()) {
@@ -58,8 +57,12 @@ object StringLiteralRecognizer : TokenRecognizer {
      * replaces the lexer's generic diagnosis whether the literal died on a line
      * break or on the end of the source
      */
-    override fun diagnose(lexeme: String): String? =
-        if (lexeme.isNotEmpty() && isQuote(lexeme.first())) UNTERMINATED else null
+    override fun diagnose(lexeme: String): LexicalFault? =
+        if (lexeme.isNotEmpty() && isQuote(lexeme.first())) {
+            LexicalFault.UNTERMINATED_STRING
+        } else {
+            null
+        }
 
     /**
      * [Token.StringLiteralToken.lexeme] keeps the quotes, its value drops them

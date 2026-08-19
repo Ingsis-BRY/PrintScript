@@ -1,5 +1,7 @@
 package com.printscript.parser
 
+import com.printscript.common.Position
+import com.printscript.common.Span
 import com.printscript.token.Token
 
 class TokenCursor(
@@ -21,5 +23,12 @@ class TokenCursor(
 
     fun hasNext(): Boolean {
         return index < tokens.size
+    }
+
+    fun endOfInput(): Span {
+        val last = tokens.lastOrNull()
+            ?: return Span.at(Position(1, 1))
+
+        return Span.at(last.end)
     }
 }

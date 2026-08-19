@@ -2,6 +2,7 @@ package com.printscript.lexer
 
 import com.printscript.common.Diagnostic
 import com.printscript.common.Position
+import com.printscript.common.Span
 import com.printscript.token.Token
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -124,7 +125,7 @@ class MaximalMunchTest {
 
         // the pushed-back dot is scanned again and starts nothing
         assertEquals(
-            Diagnostic("Unexpected character '.'", Position(1, 2)),
+            Diagnostic.UnexpectedCharacter('.', Span.at(Position(1, 2))),
             failureAt(results, index = 1)
         )
     }
@@ -139,7 +140,7 @@ class MaximalMunchTest {
         )
 
         assertEquals(
-            Diagnostic("Unexpected character '.'", Position(1, 2)),
+            Diagnostic.UnexpectedCharacter('.', Span.at(Position(1, 2))),
             failureAt(results, index = 1)
         )
     }
@@ -162,7 +163,7 @@ class MaximalMunchTest {
         )
 
         assertEquals(
-            Diagnostic("Unexpected character '.'", Position(1, 4)),
+            Diagnostic.UnexpectedCharacter('.', Span.at(Position(1, 4))),
             failureAt(results, index = 1)
         )
     }
