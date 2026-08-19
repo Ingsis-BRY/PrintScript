@@ -27,23 +27,23 @@ class Interpreter(
         }
 
     private fun executeDeclaration(statement: Statement.VariableDeclaration): Result<Unit> =
-        environment.declare(statement.name, statement.declaredType, statement.start).flatMap {
+        environment.declare(statement.name, statement.declaredType, statement.span).flatMap {
             val initializer = statement.initializer
                 ?: return@flatMap Success(Unit)
 
             evaluate(initializer).flatMap { value ->
-                environment.initialize(statement.name, value, statement.start)
+                environment.initialize(statement.name, value, statement.span)
             }
         }
 
     private fun executeAssignment(statement: Statement.Assignment): Result<Unit> =
         evaluate(statement.value).flatMap { value ->
-            environment.assign(statement.name, value, statement.start)
+            environment.assign(statement.name, value, statement.span)
         }
 
     private fun executeCall(statement: Statement.CallStatement): Result<Unit> {
         if (statement.callee != "println") {
-            return Failure(Diagnostic("Unknown function '${statement.callee}'.", statement.start))
+            return Failure(Diagnostic.UnknownFunction(statement.callee, statement.span))
         }
 
         return evaluate(statement.argument).flatMap { value ->
@@ -56,14 +56,14 @@ class Interpreter(
         when (expression) {
             is Expression.NumberLiteral -> Success(Value.NumberValue(expression.value))
             is Expression.StringLiteral -> Success(Value.StringValue(expression.value))
-            is Expression.VariableReference -> environment.lookup(expression.name, expression.start)
+            is Expression.VariableReference -> environment.lookup(expression.name, expression.span)
             is Expression.BinaryExpression -> evaluateBinary(expression)
         }
 
     private fun evaluateBinary(expression: Expression.BinaryExpression): Result<Value> =
         evaluate(expression.left).flatMap { left ->
             evaluate(expression.right).flatMap { right ->
-                valueOps.apply(expression.operator, left, right, expression.start)
+                valueOps.apply(expression.operator, left, right, expression.span)
             }
         }
 }

@@ -7,8 +7,8 @@ import kotlin.test.assertSame
 
 class ResultTest {
 
-    private val error = Diagnostic("unexpected token", Position(1, 5))
-    private val otherError = Diagnostic("undeclared variable", Position(2, 3))
+    private val error = Diagnostic.UnexpectedToken("+", Span.at(Position(1, 5)))
+    private val otherError = Diagnostic.VariableNotDeclared("x", Span.at(Position(2, 3)))
 
     @Test
     fun `success should expose its value`() {
@@ -136,7 +136,7 @@ class ResultTest {
     fun `fold should collapse a success`() {
         val folded = Success(42).fold(
             onSuccess = { "ok: $it" },
-            onFailure = { "error: ${it.message}" }
+            onFailure = { "error at line ${it.span.start.line}" }
         )
 
         assertEquals("ok: 42", folded)
@@ -148,10 +148,10 @@ class ResultTest {
 
         val folded = result.fold(
             onSuccess = { "ok: $it" },
-            onFailure = { "error: ${it.message}" }
+            onFailure = { "error at line ${it.span.start.line}" }
         )
 
-        assertEquals("error: unexpected token", folded)
+        assertEquals("error at line 1", folded)
     }
 
     @Test

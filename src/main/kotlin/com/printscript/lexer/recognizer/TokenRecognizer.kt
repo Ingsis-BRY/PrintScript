@@ -1,5 +1,6 @@
 package com.printscript.lexer.recognizer
 
+import com.printscript.common.LexicalFault
 import com.printscript.common.Position
 import com.printscript.token.Token
 
@@ -29,12 +30,15 @@ interface TokenRecognizer {
     fun tokenOf(lexeme: String, start: Position, end: Position): Token
 
     /**
-     * explains why [lexeme] is a broken attempt at this kind of token.
+     * names why [lexeme] is a broken attempt at this kind of token.
      *
      * The lexer asks only when no recognizer accepted anything, so a recognizer
      * that owns the way the lexeme starts can replace the generic
-     * unexpected-character message with a precise one. Returning null, the
+     * unexpected-character error with a precise one. Returning null, the
      * default, leaves the lexer with its own diagnosis.
+     *
+     * A recognizer names the fault and never words it: the wording of every
+     * error lives in one place, and a [LexicalFault] is what travels there.
      */
-    fun diagnose(lexeme: String): String? = null
+    fun diagnose(lexeme: String): LexicalFault? = null
 }

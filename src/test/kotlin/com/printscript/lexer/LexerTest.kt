@@ -4,6 +4,7 @@ import com.printscript.common.Diagnostic
 import com.printscript.common.Failure
 import com.printscript.common.Position
 import com.printscript.common.Result
+import com.printscript.common.Span
 import com.printscript.common.Success
 import com.printscript.token.Token
 import java.io.IOException
@@ -102,7 +103,7 @@ class LexerTest {
         val results = resultsOf("( @ )")
 
         assertEquals(
-            Diagnostic("Unexpected character '@'", Position(1, 3)),
+            Diagnostic.UnexpectedCharacter('@', Span.at(Position(1, 3))),
             failureAt(results, index = 1)
         )
     }
@@ -112,7 +113,7 @@ class LexerTest {
         val results = resultsOf("(\n  )\n  #")
 
         assertEquals(
-            Diagnostic("Unexpected character '#'", Position(3, 3)),
+            Diagnostic.UnexpectedCharacter('#', Span.at(Position(3, 3))),
             failureAt(results, index = 2)
         )
     }
@@ -149,7 +150,7 @@ class LexerTest {
         val results = resultsOf("counter @")
 
         assertEquals(
-            Diagnostic("Unexpected character '@'", Position(1, 9)),
+            Diagnostic.UnexpectedCharacter('@', Span.at(Position(1, 9))),
             failureAt(results, index = 1)
         )
     }
@@ -181,7 +182,7 @@ class LexerTest {
         assertEquals(";", tokenAt(results, index = 1).lexeme)
 
         assertEquals(
-            Diagnostic("Could not read source: disk went away", Position(1, 3)),
+            Diagnostic.SourceUnreadable("disk went away", Span.at(Position(1, 3))),
             failureAt(results, index = 2)
         )
     }
@@ -191,7 +192,7 @@ class LexerTest {
         val results = resultsFrom(BreakingReader(""))
 
         assertEquals(
-            Diagnostic("Could not read source: disk went away", Position(1, 1)),
+            Diagnostic.SourceUnreadable("disk went away", Span.at(Position(1, 1))),
             failureAt(results, index = 0)
         )
         assertEquals(1, results.size)
@@ -215,7 +216,7 @@ class LexerTest {
         assertEquals("5", tokenAt(results, index = 0).lexeme)
 
         assertEquals(
-            Diagnostic("Could not read source: disk went away", Position(1, 3)),
+            Diagnostic.SourceUnreadable("disk went away", Span.at(Position(1, 3))),
             failureAt(results, index = 1)
         )
 

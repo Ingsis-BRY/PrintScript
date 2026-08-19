@@ -2,11 +2,9 @@ package com.printscript.language
 
 import com.printscript.ast.BinaryOperator
 import com.printscript.ast.Type
-import com.printscript.common.Failure
-import com.printscript.common.Success
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertIs
+import kotlin.test.assertNull
 
 class OperatorRulesTest {
 
@@ -18,7 +16,7 @@ class OperatorRulesTest {
             Type.NumberType
         )
 
-        assertEquals(Success(Type.NumberType), result)
+        assertEquals(Type.NumberType, result)
     }
 
     @Test
@@ -29,7 +27,7 @@ class OperatorRulesTest {
             Type.StringType
         )
 
-        assertEquals(Success(Type.StringType), result)
+        assertEquals(Type.StringType, result)
     }
 
     @Test
@@ -40,7 +38,7 @@ class OperatorRulesTest {
             Type.NumberType
         )
 
-        assertEquals(Success(Type.StringType), result)
+        assertEquals(Type.StringType, result)
     }
 
     @Test
@@ -51,7 +49,7 @@ class OperatorRulesTest {
             Type.StringType
         )
 
-        assertEquals(Success(Type.StringType), result)
+        assertEquals(Type.StringType, result)
     }
 
     @Test
@@ -62,7 +60,7 @@ class OperatorRulesTest {
             Type.NumberType
         )
 
-        assertEquals(Success(Type.NumberType), result)
+        assertEquals(Type.NumberType, result)
     }
 
     @Test
@@ -73,7 +71,7 @@ class OperatorRulesTest {
             Type.StringType
         )
 
-        assertIs<Failure>(result)
+        assertNull(result)
     }
 
     @Test
@@ -84,7 +82,7 @@ class OperatorRulesTest {
             Type.NumberType
         )
 
-        assertIs<Failure>(result)
+        assertNull(result)
     }
 
     @Test
@@ -95,7 +93,7 @@ class OperatorRulesTest {
             Type.StringType
         )
 
-        assertIs<Failure>(result)
+        assertNull(result)
     }
 
     @Test
@@ -106,7 +104,7 @@ class OperatorRulesTest {
             Type.NumberType
         )
 
-        assertEquals(Success(Type.NumberType), result)
+        assertEquals(Type.NumberType, result)
     }
 
     @Test
@@ -117,7 +115,7 @@ class OperatorRulesTest {
             Type.StringType
         )
 
-        assertIs<Failure>(result)
+        assertNull(result)
     }
 
     @Test
@@ -128,7 +126,7 @@ class OperatorRulesTest {
             Type.NumberType
         )
 
-        assertIs<Failure>(result)
+        assertNull(result)
     }
 
     @Test
@@ -139,7 +137,7 @@ class OperatorRulesTest {
             Type.StringType
         )
 
-        assertIs<Failure>(result)
+        assertNull(result)
     }
 
     @Test
@@ -150,7 +148,7 @@ class OperatorRulesTest {
             Type.NumberType
         )
 
-        assertEquals(Success(Type.NumberType), result)
+        assertEquals(Type.NumberType, result)
     }
 
     @Test
@@ -161,7 +159,7 @@ class OperatorRulesTest {
             Type.StringType
         )
 
-        assertIs<Failure>(result)
+        assertNull(result)
     }
 
     @Test
@@ -172,7 +170,7 @@ class OperatorRulesTest {
             Type.NumberType
         )
 
-        assertIs<Failure>(result)
+        assertNull(result)
     }
 
     @Test
@@ -183,6 +181,6 @@ class OperatorRulesTest {
             Type.StringType
         )
 
-        assertIs<Failure>(result)
+        assertNull(result)
     }
 }

@@ -4,6 +4,7 @@ import com.printscript.common.Diagnostic
 import com.printscript.common.Failure
 import com.printscript.common.Position
 import com.printscript.common.Result
+import com.printscript.common.Span
 import com.printscript.common.Success
 import com.printscript.lexer.recognizer.RecognizerState
 import com.printscript.lexer.recognizer.TokenRecognizer
@@ -108,13 +109,14 @@ class Lexer(
     }
 
     /**
-     * reports a lexeme no recognizer could accept, at the position it started on
+     * reports a lexeme no recognizer could accept, over the source it covers
      *
      * a source that broke outranks everything: the leftovers of a truncated read
      * are a consequence of the I/O failure, not a separate lexical problem
      *
-     * a recognizer that owns how the lexeme starts gets to name the problem;
-     * otherwise the first character is simply not one a token can begin with
+     * a recognizer that owns how the lexeme starts gets to name the problem, and
+     * the span then covers the whole attempt; otherwise the first character is
+     * simply not one a token can begin with, and the span is that character
      *
      * that character stays consumed so the scan always makes progress
      */
@@ -127,16 +129,31 @@ class Lexer(
 
         pushBack(consumed.drop(1))
 
-        val diagnosis = recognizers.firstNotNullOfOrNull { it.diagnose(lexeme) }
-            ?: "Unexpected character '${consumed.first().value}'"
+        val fault = recognizers.firstNotNullOfOrNull { it.diagnose(lexeme) }
+            ?: return Failure(
+                Diagnostic.UnexpectedCharacter(
+                    character = consumed.first().value,
+                    span = Span.at(start)
+                )
+            )
 
         return Failure(
-            Diagnostic(
-                message = diagnosis,
-                position = start
+            Diagnostic.MalformedLexeme(
+                fault = fault,
+                span = Span(start, lastCharacterOf(consumed))
             )
         )
     }
+
+    /**
+     * the last position the broken lexeme actually covers
+     *
+     * the character that rejected it can be the line break that ended the line,
+     * and a span must not run past the text it points at
+     */
+    private fun lastCharacterOf(consumed: List<PositionedChar>): Position =
+        consumed.lastOrNull { !it.value.isWhitespace() }?.position
+            ?: consumed.first().position
 
     /**
      * drops characters until the next one can start a token
@@ -179,9 +196,9 @@ class Lexer(
             }
 
             is SourceChar.Failed -> {
-                unreadFailure = Diagnostic(
-                    message = "Could not read source: ${sourceChar.message}",
-                    position = Position(line, column)
+                unreadFailure = Diagnostic.SourceUnreadable(
+                    detail = sourceChar.message,
+                    span = Span.at(Position(line, column))
                 )
                 null
             }

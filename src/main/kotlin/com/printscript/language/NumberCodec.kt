@@ -2,28 +2,22 @@ package com.printscript.language
 
 import com.printscript.common.Diagnostic
 import com.printscript.common.Failure
-import com.printscript.common.Position
 import com.printscript.common.Result
+import com.printscript.common.Span
 import com.printscript.common.Success
 
 object NumberCodec {
 
     fun parse(
         text: String,
-        start: Position,
-        end: Position
+        span: Span
     ): Result<Double> {
         val value = text.toDoubleOrNull()
 
         return if (value != null) {
             Success(value)
         } else {
-            Failure(
-                Diagnostic(
-                    message = "Malformed number: $text",
-                    position = start
-                )
-            )
+            Failure(Diagnostic.MalformedNumber(text, span))
         }
     }
 
