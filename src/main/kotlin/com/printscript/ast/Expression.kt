@@ -1,10 +1,9 @@
 package com.printscript.ast
 
+import com.printscript.common.Located
 import com.printscript.common.Position
 
-sealed interface Expression {
-    val start: Position
-    val end: Position
+sealed interface Expression : Located {
 
     data class NumberLiteral(
         val value: Double,

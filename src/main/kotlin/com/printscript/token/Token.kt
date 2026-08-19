@@ -1,11 +1,10 @@
 package com.printscript.token
 
+import com.printscript.common.Located
 import com.printscript.common.Position
 
-sealed interface Token {
+sealed interface Token : Located {
     val lexeme: String
-    val start: Position
-    val end: Position
 
     data class LetToken(
         override val lexeme: String,
