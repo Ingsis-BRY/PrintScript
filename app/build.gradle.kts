@@ -20,6 +20,7 @@ dependencies {
 
 application {
     mainClass.set("com.printscript.app.MainKt")
+    applicationName = "printscript"
 }
 
 tasks.test {
