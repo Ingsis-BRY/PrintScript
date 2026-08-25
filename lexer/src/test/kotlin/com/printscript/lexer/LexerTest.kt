@@ -1,5 +1,6 @@
 package com.printscript.lexer
 
+import com.printscript.lexer.recognizer.TokenRecognizers
 import com.printscript.report.Diagnostic
 import com.printscript.report.Failure
 import com.printscript.common.Position
@@ -168,7 +169,7 @@ class LexerTest {
     fun `tokens are produced lazily`() {
         val reader = StringSourceReader(";".repeat(1_000))
 
-        val firstTwo = Lexer(reader).tokens().take(2).toList()
+        val firstTwo = Lexer(reader, TokenRecognizers.DEFAULT).tokens().take(2).toList()
 
         assertEquals(2, firstTwo.size)
         assertTrue(reader.hasNext(), "the whole source was consumed before it was needed")
@@ -224,7 +225,7 @@ class LexerTest {
     }
 
     private fun resultsFrom(reader: Reader): List<Result<Token>> =
-        Lexer(StreamSourceReader(reader)).tokens().toList()
+        Lexer(StreamSourceReader(reader), TokenRecognizers.DEFAULT).tokens().toList()
 
     /**
      * yields the whole source and then throws instead of signalling a clean end

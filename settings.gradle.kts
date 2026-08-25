@@ -3,6 +3,7 @@ plugins {
 }
 rootProject.name = "PrintScript"
 
+include(":app")
 include(":ast")
 include(":cli")
 include(":common")
