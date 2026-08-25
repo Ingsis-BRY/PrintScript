@@ -22,4 +22,18 @@ subprojects {
         buildUponDefaultConfig.set(false)
         ignoreFailures.set(false)
     }
+
+    tasks.register<Copy>("installGitHook") {
+        from(layout.projectDirectory.file("scripts/pre-commit"))
+        into(layout.projectDirectory.dir(".git/hooks"))
+        rename { "pre-commit" }
+
+        doLast {
+            val hook = layout.projectDirectory
+                .file(".git/hooks/pre-commit")
+                .asFile
+
+            hook.setExecutable(true)
+        }
+    }
 }
