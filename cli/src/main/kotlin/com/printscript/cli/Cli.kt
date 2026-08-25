@@ -1,15 +1,11 @@
 package com.printscript.cli
 
+import com.printscript.pipeline.StatementStream
+import com.printscript.report.ErrorRenderer
 import com.printscript.report.Failure
 import com.printscript.report.Result
 import com.printscript.report.Success
-import com.printscript.interpreter.ConsoleOutput
-import com.printscript.interpreter.Interpreter
-import com.printscript.interpreter.OutputEmitter
-import com.printscript.lexer.Lexer
-import com.printscript.lexer.StreamSourceReader
-import com.printscript.pipeline.StatementStream
-import com.printscript.report.ErrorRenderer
+import java.io.Reader
 import java.nio.file.Files
 import java.nio.file.Path
 
@@ -30,10 +26,11 @@ enum class Operation {
 * never loaded whole.
 */
 class Cli(
-    private val output: OutputEmitter = ConsoleOutput(),
-    private val progress: ProgressPrinter = ProgressPrinter(),
-    private val renderer: ErrorRenderer = ErrorRenderer(),
-    private val errors: Appendable = System.err
+    private val newStream: (Reader) -> StatementStream,
+    private val newProgram: () -> Program,
+    private val renderer: ErrorRenderer,
+    private val progress: ProgressPrinter,
+    private val errors: Appendable
 ) {
 
     /**
@@ -45,7 +42,7 @@ class Cli(
         requireSupported(version)
 
         return Files.newBufferedReader(file).use { reader ->
-            val stream = StatementStream(Lexer(StreamSourceReader(reader)))
+            val stream = newStream(reader)
 
             when (operation) {
                 Operation.VALIDATION -> validate(stream)
@@ -72,7 +69,7 @@ class Cli(
     * runs each statement as it comes out of the stream
     */
     private fun execute(stream: StatementStream): Result<Unit> {
-        val interpreter = Interpreter(output = output)
+        val program = newProgram()
 
         while (stream.hasNext()) {
             when (val parsed = stream.next()) {
@@ -81,7 +78,7 @@ class Cli(
                 is Success -> {
                     progress.statementParsed(parsed.value.start)
 
-                    val executed = interpreter.execute(parsed.value)
+                    val executed = program.execute(parsed.value)
                     if (executed is Failure) {
                         return report(executed)
                     }

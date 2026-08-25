@@ -1,9 +1,12 @@
 package com.printscript.report
 
 import com.printscript.interpreter.CollectingOutput
+import com.printscript.interpreter.Environment
+import com.printscript.interpreter.ValueOps
 import com.printscript.interpreter.Interpreter
 import com.printscript.lexer.Lexer
 import com.printscript.lexer.StringSourceReader
+import com.printscript.lexer.recognizer.TokenRecognizers
 import com.printscript.parser.Parser
 import com.printscript.token.Token
 import kotlin.test.Test
@@ -82,7 +85,7 @@ class ErrorReportingTest {
     private fun errorOf(source: String): Diagnostic {
         val tokens = mutableListOf<Token>()
 
-        for (result in Lexer(StringSourceReader(source)).tokens()) {
+        for (result in Lexer(StringSourceReader(source), TokenRecognizers.DEFAULT).tokens()) {
             when (result) {
                 is Success -> tokens.add(result.value)
                 is Failure -> return result.error
@@ -94,7 +97,7 @@ class ErrorReportingTest {
             is Failure -> return parsed.error
         }
 
-        val interpreter = Interpreter(output = CollectingOutput())
+        val interpreter = Interpreter(Environment(), CollectingOutput(), ValueOps())
 
         return when (val executed = interpreter.execute(statement)) {
             is Failure -> executed.error

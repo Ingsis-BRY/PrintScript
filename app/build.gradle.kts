@@ -1,5 +1,6 @@
 plugins {
     kotlin("jvm")
+    application
 }
 
 kotlin {
@@ -7,12 +8,18 @@ kotlin {
 }
 
 dependencies {
-    implementation(project(":common"))
-    implementation(project(":ast"))
+    implementation(project(":cli"))
     implementation(project(":pipeline"))
+    implementation(project(":lexer"))
+    implementation(project(":parser"))
+    implementation(project(":interpreter"))
     implementation(project(":report"))
 
     testImplementation(kotlin("test"))
+}
+
+application {
+    mainClass.set("com.printscript.app.MainKt")
 }
 
 tasks.test {

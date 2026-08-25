@@ -8,7 +8,6 @@ import com.printscript.common.Span
 import com.printscript.report.Success
 import com.printscript.lexer.recognizer.RecognizerState
 import com.printscript.lexer.recognizer.TokenRecognizer
-import com.printscript.lexer.recognizer.TokenRecognizers
 import com.printscript.token.Token
 
 /**
@@ -25,7 +24,7 @@ import com.printscript.token.Token
  */
 class Lexer(
     private val reader: SourceReader,
-    private val recognizers: List<TokenRecognizer> = TokenRecognizers.DEFAULT
+    private val recognizers: List<TokenRecognizer>
 ) {
 
     private val pending: ArrayDeque<PositionedChar> = ArrayDeque()
