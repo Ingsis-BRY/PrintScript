@@ -7,8 +7,8 @@ kotlin {
 }
 
 dependencies {
-    implementation(project(":common"))
-    implementation(project(":ast"))
+    api(project(":common"))
+    api(project(":ast"))
 
     testImplementation(project(":lexer"))
     testImplementation(project(":parser"))
