@@ -22,15 +22,24 @@ import java.nio.file.NoSuchFileException
 import java.nio.file.Path
 import kotlin.system.exitProcess
 
-fun main(args: Array<String>) {
-    val usage = "usage: printscript <validation|execution> <file> [version]"
+private val Discarded = object : Appendable {
+    override fun append(value: CharSequence?): Appendable = this
+    override fun append(value: CharSequence?, startIndex: Int, endIndex: Int): Appendable = this
+    override fun append(value: Char): Appendable = this
+}
 
-    if (args.size !in 2..3) {
+fun main(args: Array<String>) {
+    val usage = "usage: printscript <validation|execution> <file> [version] [--verbose]"
+
+    val verbose = args.any { it == "--verbose" || it == "-v" }
+    val operands = args.filterNot { it == "--verbose" || it == "-v" }
+
+    if (operands.size !in 2..3) {
         System.err.println(usage)
         exitProcess(2)
     }
 
-    val operation = when (args[0].lowercase()) {
+    val operation = when (operands[0].lowercase()) {
         "validation" -> Operation.VALIDATION
         "execution" -> Operation.EXECUTION
         else -> {
@@ -54,20 +63,20 @@ fun main(args: Array<String>) {
             Program(interpreter::execute)
         },
         renderer = ErrorRenderer(),
-        progress = ProgressPrinter(System.err),
+        progress = ProgressPrinter(if (verbose) System.err else Discarded),
         errors = System.err
     )
 
     val result = try {
-        cli.run(operation, Path.of(args[1]), version = args.getOrNull(2))
+        cli.run(operation, Path.of(operands[1]), version = operands.getOrNull(2))
     } catch (error: IllegalArgumentException) {
         System.err.println(error.message)
         exitProcess(2)
     } catch (error: NoSuchFileException) {
-        System.err.println("cannot read ${args[1]}: no such file")
+        System.err.println("cannot read ${operands[1]}: no such file")
         exitProcess(2)
     } catch (error: IOException) {
-        System.err.println("cannot read ${args[1]}: ${error.message ?: "I/O error"}")
+        System.err.println("cannot read ${operands[1]}: ${error.message ?: "I/O error"}")
         exitProcess(2)
     }
 
