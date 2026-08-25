@@ -23,17 +23,14 @@ subprojects {
         ignoreFailures.set(false)
     }
 
-    tasks.register<Copy>("installGitHook") {
-        from(layout.projectDirectory.file("scripts/pre-commit"))
-        into(layout.projectDirectory.dir(".git/hooks"))
-        rename { "pre-commit" }
-
+    tasks.register("installGitHook") {
         doLast {
-            val hook = layout.projectDirectory
-                .file(".git/hooks/pre-commit")
-                .asFile
+            val source = rootProject.file("scripts/pre-commit")
+            val target = rootProject.file(".git/hooks/pre-commit")
 
-            hook.setExecutable(true)
+            target.parentFile.mkdirs()
+            source.copyTo(target, overwrite = true)
+            target.setExecutable(true)
         }
     }
 }
