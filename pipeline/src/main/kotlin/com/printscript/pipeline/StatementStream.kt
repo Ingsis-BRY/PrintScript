@@ -14,20 +14,19 @@ import com.printscript.token.Token
 */
 class StatementStream(
     source: TokenSource,
-    private val parser: StatementParser
+    private val parser: StatementParser,
 ) {
-
     private val tokens = source.tokens().iterator()
 
     /**
-    * whether the source still holds tokens to form a statement
-    */
+     * whether the source still holds tokens to form a statement
+     */
     fun hasNext(): Boolean = tokens.hasNext()
 
     /**
-    * reads tokens up to and including the next `;` and parses them.
-    * a lexical [Failure] is handed over as is, stopping at the first error.
-    */
+     * reads tokens up to and including the next `;` and parses them.
+     * a lexical [Failure] is handed over as is, stopping at the first error.
+     */
     fun next(): Result<Statement> {
         val batch = mutableListOf<Token>()
 

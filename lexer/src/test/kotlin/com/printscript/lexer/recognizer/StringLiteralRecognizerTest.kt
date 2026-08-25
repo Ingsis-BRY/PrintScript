@@ -1,14 +1,13 @@
 package com.printscript.lexer.recognizer
 
-import com.printscript.report.LexicalFault
 import com.printscript.common.Position
+import com.printscript.report.LexicalFault
 import com.printscript.token.Token
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
 class StringLiteralRecognizerTest {
-
     @Test
     fun `is pending on the empty lexeme`() {
         assertEquals(RecognizerState.Pending, StringLiteralRecognizer.recognize(""))
@@ -84,7 +83,7 @@ class StringLiteralRecognizerTest {
 
         assertEquals(
             Token.StringLiteralToken("\"hola\"", "hola", Position(1, 5), Position(1, 10)),
-            token
+            token,
         )
     }
 
@@ -94,7 +93,7 @@ class StringLiteralRecognizerTest {
 
         assertEquals(
             Token.StringLiteralToken("''", "", Position(1, 1), Position(1, 2)),
-            token
+            token,
         )
     }
 }

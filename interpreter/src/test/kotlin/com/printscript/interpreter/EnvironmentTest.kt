@@ -1,11 +1,11 @@
 package com.printscript.interpreter
 
 import com.printscript.ast.Type
+import com.printscript.common.Position
+import com.printscript.common.Span
 import com.printscript.report.Diagnostic
 import com.printscript.report.Failure
-import com.printscript.common.Position
 import com.printscript.report.Result
-import com.printscript.common.Span
 import com.printscript.report.Success
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -13,7 +13,6 @@ import kotlin.test.assertIs
 import kotlin.test.assertNotEquals
 
 class EnvironmentTest {
-
     private val span = Span.at(Position(1, 1))
 
     private fun errorOf(result: Result<*>) = assertIs<Failure>(result).error
@@ -99,7 +98,7 @@ class EnvironmentTest {
         assertIs<Success<Unit>>(assigned)
         assertEquals(
             Value.NumberValue(2.0),
-            assertIs<Success<Value>>(env.lookup("x", span)).value
+            assertIs<Success<Value>>(env.lookup("x", span)).value,
         )
     }
 
@@ -113,7 +112,7 @@ class EnvironmentTest {
         assertIs<Success<Unit>>(result)
         assertEquals(
             Value.NumberValue(7.0),
-            assertIs<Success<Value>>(env.lookup("x", span)).value
+            assertIs<Success<Value>>(env.lookup("x", span)).value,
         )
     }
 
@@ -138,9 +137,9 @@ class EnvironmentTest {
                 name = "x",
                 declared = Type.NumberType,
                 actual = Type.StringType,
-                span = span
+                span = span,
             ),
-            error
+            error,
         )
     }
 
@@ -156,9 +155,9 @@ class EnvironmentTest {
                 name = "s",
                 declared = Type.StringType,
                 actual = Type.NumberType,
-                span = span
+                span = span,
             ),
-            error
+            error,
         )
     }
 

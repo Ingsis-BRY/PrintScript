@@ -7,8 +7,9 @@ import com.printscript.common.Position
 * writes to a sink separate from the program output, so `println` results
 * stay clean.
 */
-class ProgressPrinter(private val sink: Appendable) {
-
+class ProgressPrinter(
+    private val sink: Appendable,
+) {
     fun statementParsed(position: Position) {
         sink.appendLine("parsed statement at ${position.line}:${position.column}")
     }

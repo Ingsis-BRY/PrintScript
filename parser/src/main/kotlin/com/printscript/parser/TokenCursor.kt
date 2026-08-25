@@ -5,13 +5,11 @@ import com.printscript.common.Span
 import com.printscript.token.Token
 
 class TokenCursor(
-    private val tokens: List<Token>
+    private val tokens: List<Token>,
 ) {
     private var index: Int = 0
 
-    fun peek(): Token? {
-        return tokens.getOrNull(index)
-    }
+    fun peek(): Token? = tokens.getOrNull(index)
 
     fun consume(): Token? {
         if (!hasNext()) {
@@ -21,13 +19,12 @@ class TokenCursor(
         return tokens[index++]
     }
 
-    fun hasNext(): Boolean {
-        return index < tokens.size
-    }
+    fun hasNext(): Boolean = index < tokens.size
 
     fun endOfInput(): Span {
-        val last = tokens.lastOrNull()
-            ?: return Span.at(Position(1, 1))
+        val last =
+            tokens.lastOrNull()
+                ?: return Span.at(Position(1, 1))
 
         return Span.at(last.end)
     }

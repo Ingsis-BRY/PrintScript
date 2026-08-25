@@ -2,13 +2,13 @@ package com.printscript.interpreter
 
 import com.printscript.ast.BinaryOperator
 import com.printscript.ast.Type
+import com.printscript.common.Span
+import com.printscript.language.NumberCodec
+import com.printscript.language.OperatorRules
 import com.printscript.report.Diagnostic
 import com.printscript.report.Failure
 import com.printscript.report.Result
-import com.printscript.common.Span
 import com.printscript.report.Success
-import com.printscript.language.NumberCodec
-import com.printscript.language.OperatorRules
 
 /**
 * applies a binary operator to two values.
@@ -17,22 +17,22 @@ import com.printscript.language.OperatorRules
 * table has no position, so blaming [span] for a rejected pair happens here.
 */
 class ValueOps {
-
     fun apply(
         operator: BinaryOperator,
         left: Value,
         right: Value,
-        span: Span
+        span: Span,
     ): Result<Value> {
-        val resultType = OperatorRules.resultType(operator, left.type, right.type)
-            ?: return Failure(
-                Diagnostic.IncompatibleOperands(
-                    operator = operator,
-                    left = left.type,
-                    right = right.type,
-                    span = span
+        val resultType =
+            OperatorRules.resultType(operator, left.type, right.type)
+                ?: return Failure(
+                    Diagnostic.IncompatibleOperands(
+                        operator = operator,
+                        left = left.type,
+                        right = right.type,
+                        span = span,
+                    ),
                 )
-            )
 
         return when (resultType) {
             Type.StringType -> Success(Value.StringValue(render(left) + render(right)))
@@ -45,7 +45,7 @@ class ValueOps {
         operator: BinaryOperator,
         left: Value,
         right: Value,
-        span: Span
+        span: Span,
     ): Result<Value> {
         val a = (left as Value.NumberValue).value
         val b = (right as Value.NumberValue).value

@@ -16,9 +16,8 @@ import com.printscript.report.flatMap
 class Interpreter(
     private val environment: Environment,
     private val output: OutputEmitter,
-    private val valueOps: ValueOps
+    private val valueOps: ValueOps,
 ) {
-
     fun execute(statement: Statement): Result<Unit> =
         when (statement) {
             is Statement.VariableDeclaration -> executeDeclaration(statement)
@@ -28,8 +27,9 @@ class Interpreter(
 
     private fun executeDeclaration(statement: Statement.VariableDeclaration): Result<Unit> =
         environment.declare(statement.name, statement.declaredType, statement.span).flatMap {
-            val initializer = statement.initializer
-                ?: return@flatMap Success(Unit)
+            val initializer =
+                statement.initializer
+                    ?: return@flatMap Success(Unit)
 
             evaluate(initializer).flatMap { value ->
                 environment.initialize(statement.name, value, statement.span)

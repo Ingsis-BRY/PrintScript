@@ -6,7 +6,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class TokenTest {
-
     private val start = Position(1, 1)
     private val end = Position(1, 5)
 
@@ -148,12 +147,13 @@ class TokenTest {
 
     @Test
     fun `tokens should expose their position`() {
-        val token = Token.NumberLiteralToken(
-            lexeme = "42",
-            value = "42",
-            start = Position(3, 10),
-            end = Position(3, 12)
-        )
+        val token =
+            Token.NumberLiteralToken(
+                lexeme = "42",
+                value = "42",
+                start = Position(3, 10),
+                end = Position(3, 12),
+            )
 
         assertEquals(Position(3, 10), token.start)
         assertEquals(Position(3, 12), token.end)
@@ -161,22 +161,23 @@ class TokenTest {
 
     @Test
     fun `all token variants should implement Token`() {
-        val tokens: List<Token> = listOf(
-            Token.LetToken("let", start, end),
-            Token.IdentifierToken("foo", start, end),
-            Token.TypeNameToken("number", start, end),
-            Token.NumberLiteralToken("42", "42", start, end),
-            Token.StringLiteralToken("\"hello\"", "hello", start, end),
-            Token.AssignToken("=", start, end),
-            Token.ColonToken(":", start, end),
-            Token.SemicolonToken(";", start, end),
-            Token.PlusToken("+", start, end),
-            Token.MinusToken("-", start, end),
-            Token.StarToken("*", start, end),
-            Token.SlashToken("/", start, end),
-            Token.LeftParenToken("(", start, end),
-            Token.RightParenToken(")", start, end)
-        )
+        val tokens: List<Token> =
+            listOf(
+                Token.LetToken("let", start, end),
+                Token.IdentifierToken("foo", start, end),
+                Token.TypeNameToken("number", start, end),
+                Token.NumberLiteralToken("42", "42", start, end),
+                Token.StringLiteralToken("\"hello\"", "hello", start, end),
+                Token.AssignToken("=", start, end),
+                Token.ColonToken(":", start, end),
+                Token.SemicolonToken(";", start, end),
+                Token.PlusToken("+", start, end),
+                Token.MinusToken("-", start, end),
+                Token.StarToken("*", start, end),
+                Token.SlashToken("/", start, end),
+                Token.LeftParenToken("(", start, end),
+                Token.RightParenToken(")", start, end),
+            )
 
         assertTrue(tokens.all { true })
     }

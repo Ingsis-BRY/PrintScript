@@ -1,8 +1,8 @@
 package com.printscript.lexer
 
-import com.printscript.report.Diagnostic
 import com.printscript.common.Position
 import com.printscript.common.Span
+import com.printscript.report.Diagnostic
 import com.printscript.token.Token
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -15,22 +15,21 @@ import kotlin.test.assertIs
  * of the very same length.
  */
 class MaximalMunchTest {
-
     @Test
     fun `an equal length tie goes to the recognizer registered first`() {
         assertEquals(
             Token.LetToken("let", Position(1, 1), Position(1, 3)),
-            singleTokenOf("let")
+            singleTokenOf("let"),
         )
 
         assertEquals(
             Token.TypeNameToken("number", Position(1, 1), Position(1, 6)),
-            singleTokenOf("number")
+            singleTokenOf("number"),
         )
 
         assertEquals(
             Token.TypeNameToken("string", Position(1, 1), Position(1, 6)),
-            singleTokenOf("string")
+            singleTokenOf("string"),
         )
     }
 
@@ -38,17 +37,17 @@ class MaximalMunchTest {
     fun `a longer match beats the higher priority recognizer`() {
         assertEquals(
             Token.IdentifierToken("lets", Position(1, 1), Position(1, 4)),
-            singleTokenOf("lets")
+            singleTokenOf("lets"),
         )
 
         assertEquals(
             Token.IdentifierToken("numbers", Position(1, 1), Position(1, 7)),
-            singleTokenOf("numbers")
+            singleTokenOf("numbers"),
         )
 
         assertEquals(
             Token.IdentifierToken("stringify", Position(1, 1), Position(1, 9)),
-            singleTokenOf("stringify")
+            singleTokenOf("stringify"),
         )
     }
 
@@ -73,7 +72,7 @@ class MaximalMunchTest {
     fun `println is an ordinary identifier`() {
         assertEquals(
             Token.IdentifierToken("println", Position(1, 1), Position(1, 7)),
-            singleTokenOf("println")
+            singleTokenOf("println"),
         )
     }
 
@@ -81,7 +80,7 @@ class MaximalMunchTest {
     fun `an identifier stops at the first character outside its alphabet`() {
         assertEquals(
             listOf("counter", "-", "x"),
-            tokensOf("counter-x").map { it.lexeme }
+            tokensOf("counter-x").map { it.lexeme },
         )
     }
 
@@ -100,7 +99,7 @@ class MaximalMunchTest {
 
         assertEquals(
             listOf("let", "total", ":", "number", "=", "subtotal", ";"),
-            tokens.map { it.lexeme }
+            tokens.map { it.lexeme },
         )
 
         assertIs<Token.LetToken>(tokens[0])
@@ -120,13 +119,13 @@ class MaximalMunchTest {
         // on ';' and fell back to the last accepted length
         assertEquals(
             Token.NumberLiteralToken("5", "5", Position(1, 1), Position(1, 1)),
-            tokenAt(results, index = 0)
+            tokenAt(results, index = 0),
         )
 
         // the pushed-back dot is scanned again and starts nothing
         assertEquals(
             Diagnostic.UnexpectedCharacter('.', Span.at(Position(1, 2))),
-            failureAt(results, index = 1)
+            failureAt(results, index = 1),
         )
     }
 
@@ -136,12 +135,12 @@ class MaximalMunchTest {
 
         assertEquals(
             Token.NumberLiteralToken("5", "5", Position(1, 1), Position(1, 1)),
-            tokenAt(results, index = 0)
+            tokenAt(results, index = 0),
         )
 
         assertEquals(
             Diagnostic.UnexpectedCharacter('.', Span.at(Position(1, 2))),
-            failureAt(results, index = 1)
+            failureAt(results, index = 1),
         )
     }
 
@@ -149,7 +148,7 @@ class MaximalMunchTest {
     fun `a complete decimal is not backed off`() {
         assertEquals(
             Token.NumberLiteralToken("3.5", "3.5", Position(1, 1), Position(1, 3)),
-            singleTokenOf("3.5")
+            singleTokenOf("3.5"),
         )
     }
 
@@ -159,12 +158,12 @@ class MaximalMunchTest {
 
         assertEquals(
             Token.NumberLiteralToken("5.5", "5.5", Position(1, 1), Position(1, 3)),
-            tokenAt(results, index = 0)
+            tokenAt(results, index = 0),
         )
 
         assertEquals(
             Diagnostic.UnexpectedCharacter('.', Span.at(Position(1, 4))),
-            failureAt(results, index = 1)
+            failureAt(results, index = 1),
         )
     }
 
@@ -172,20 +171,25 @@ class MaximalMunchTest {
     fun `a number ends where the digits end`() {
         assertEquals(
             listOf("42", ";"),
-            tokensOf("42;").map { it.lexeme }
+            tokensOf("42;").map { it.lexeme },
         )
 
         assertEquals(
             listOf("(", "3.5", "+", "2", ")"),
-            tokensOf("(3.5+2)").map { it.lexeme }
+            tokensOf("(3.5+2)").map { it.lexeme },
         )
     }
 
     @Test
     fun `a string swallows characters that would otherwise be tokens`() {
         assertEquals(
-            Token.StringLiteralToken("\"a + b; let\"", "a + b; let", Position(1, 1), Position(1, 12)),
-            singleTokenOf("\"a + b; let\"")
+            Token.StringLiteralToken(
+                "\"a + b; let\"",
+                "a + b; let",
+                Position(1, 1),
+                Position(1, 12),
+            ),
+            singleTokenOf("\"a + b; let\""),
         )
     }
 }

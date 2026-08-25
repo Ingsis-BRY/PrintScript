@@ -27,27 +27,25 @@ import com.printscript.token.Token.TypeNameToken
  * is one entry here plus its recognizer; nothing existing changes.
  */
 object TokenRecognizers {
-
-    val DEFAULT: List<TokenRecognizer> = listOf(
-        // fixed one-character literals, none a prefix of another
-        FixedLexemeRecognizer(":", ::ColonToken),
-        FixedLexemeRecognizer("=", ::AssignToken),
-        FixedLexemeRecognizer(";", ::SemicolonToken),
-        FixedLexemeRecognizer("+", ::PlusToken),
-        FixedLexemeRecognizer("-", ::MinusToken),
-        FixedLexemeRecognizer("*", ::StarToken),
-        FixedLexemeRecognizer("/", ::SlashToken),
-        FixedLexemeRecognizer("(", ::LeftParenToken),
-        FixedLexemeRecognizer(")", ::RightParenToken),
-
-        // reserved words, ahead of the identifier so they win an equal-length tie
-        FixedLexemeRecognizer("let", ::LetToken),
-        FixedLexemeRecognizer("number", ::TypeNameToken),
-        FixedLexemeRecognizer("string", ::TypeNameToken),
-
-        // open recognizers, the only ones whose automaton has a real loop
-        IdentifierRecognizer,
-        NumberLiteralRecognizer,
-        StringLiteralRecognizer
-    )
+    val DEFAULT: List<TokenRecognizer> =
+        listOf(
+            // fixed one-character literals, none a prefix of another
+            FixedLexemeRecognizer(":", ::ColonToken),
+            FixedLexemeRecognizer("=", ::AssignToken),
+            FixedLexemeRecognizer(";", ::SemicolonToken),
+            FixedLexemeRecognizer("+", ::PlusToken),
+            FixedLexemeRecognizer("-", ::MinusToken),
+            FixedLexemeRecognizer("*", ::StarToken),
+            FixedLexemeRecognizer("/", ::SlashToken),
+            FixedLexemeRecognizer("(", ::LeftParenToken),
+            FixedLexemeRecognizer(")", ::RightParenToken),
+            // reserved words, ahead of the identifier so they win an equal-length tie
+            FixedLexemeRecognizer("let", ::LetToken),
+            FixedLexemeRecognizer("number", ::TypeNameToken),
+            FixedLexemeRecognizer("string", ::TypeNameToken),
+            // open recognizers, the only ones whose automaton has a real loop
+            IdentifierRecognizer,
+            NumberLiteralRecognizer,
+            StringLiteralRecognizer,
+        )
 }

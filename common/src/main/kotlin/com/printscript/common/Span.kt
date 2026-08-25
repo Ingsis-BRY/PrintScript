@@ -7,10 +7,9 @@ package com.printscript.common
  */
 data class Span(
     val start: Position,
-    val end: Position
+    val end: Position,
 ) {
     companion object {
-
         /**
          * the span of a single character
          */

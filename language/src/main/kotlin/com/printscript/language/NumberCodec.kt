@@ -1,16 +1,15 @@
 package com.printscript.language
 
+import com.printscript.common.Span
 import com.printscript.report.Diagnostic
 import com.printscript.report.Failure
 import com.printscript.report.Result
-import com.printscript.common.Span
 import com.printscript.report.Success
 
 object NumberCodec {
-
     fun parse(
         text: String,
-        span: Span
+        span: Span,
     ): Result<Double> {
         val value = text.toDoubleOrNull()
 

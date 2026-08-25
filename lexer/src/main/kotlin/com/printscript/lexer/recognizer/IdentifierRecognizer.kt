@@ -17,7 +17,6 @@ import com.printscript.token.Token
  * the tie by being registered first in [TokenRecognizers].
  */
 object IdentifierRecognizer : TokenRecognizer {
-
     override fun recognize(lexeme: String): RecognizerState =
         when {
             lexeme.isEmpty() -> RecognizerState.Pending
@@ -26,8 +25,11 @@ object IdentifierRecognizer : TokenRecognizer {
             else -> RecognizerState.Rejected
         }
 
-    override fun tokenOf(lexeme: String, start: Position, end: Position): Token =
-        Token.IdentifierToken(lexeme, start, end)
+    override fun tokenOf(
+        lexeme: String,
+        start: Position,
+        end: Position,
+    ): Token = Token.IdentifierToken(lexeme, start, end)
 
     /**
      * walks the lexeme by index, since the lexer calls this once per character

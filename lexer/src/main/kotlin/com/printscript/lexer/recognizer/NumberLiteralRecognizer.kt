@@ -19,7 +19,6 @@ import com.printscript.token.Token
  * the lexer calls this once per character.
  */
 object NumberLiteralRecognizer : TokenRecognizer {
-
     override fun recognize(lexeme: String): RecognizerState {
         if (lexeme.isEmpty()) {
             return RecognizerState.Pending
@@ -54,15 +53,23 @@ object NumberLiteralRecognizer : TokenRecognizer {
      * the strict format is a subset of what `toDouble` reads, so [Token.NumberLiteralToken.value]
      * is the lexeme itself
      */
-    override fun tokenOf(lexeme: String, start: Position, end: Position): Token =
+    override fun tokenOf(
+        lexeme: String,
+        start: Position,
+        end: Position,
+    ): Token =
         Token.NumberLiteralToken(
             lexeme = lexeme,
             value = lexeme,
             start = start,
-            end = end
+            end = end,
         )
 
-    private fun allDigits(lexeme: String, from: Int, toExclusive: Int): Boolean {
+    private fun allDigits(
+        lexeme: String,
+        from: Int,
+        toExclusive: Int,
+    ): Boolean {
         for (index in from until toExclusive) {
             if (!isDigit(lexeme[index])) {
                 return false
@@ -72,6 +79,5 @@ object NumberLiteralRecognizer : TokenRecognizer {
         return true
     }
 
-    private fun isDigit(value: Char): Boolean =
-        value in '0'..'9'
+    private fun isDigit(value: Char): Boolean = value in '0'..'9'
 }

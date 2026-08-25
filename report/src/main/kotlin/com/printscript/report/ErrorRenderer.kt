@@ -11,9 +11,7 @@ import com.printscript.common.Span
  * `(line:column)-(line:column)`.
  */
 class ErrorRenderer {
-
-    fun render(error: Diagnostic): String =
-        "${renderSpan(error.span)} ${describe(error)}"
+    fun render(error: Diagnostic): String = "${renderSpan(error.span)} ${describe(error)}"
 
     /**
      * both ends are inclusive, so a one-character error repeats its position

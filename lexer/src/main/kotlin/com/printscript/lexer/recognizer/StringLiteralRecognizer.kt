@@ -1,7 +1,7 @@
 package com.printscript.lexer.recognizer
 
-import com.printscript.report.LexicalFault
 import com.printscript.common.Position
+import com.printscript.report.LexicalFault
 import com.printscript.token.Token
 
 /**
@@ -21,7 +21,6 @@ import com.printscript.token.Token
  * squared in allocation.
  */
 object StringLiteralRecognizer : TokenRecognizer {
-
     override fun recognize(lexeme: String): RecognizerState {
         if (lexeme.isEmpty()) {
             return RecognizerState.Pending
@@ -67,17 +66,19 @@ object StringLiteralRecognizer : TokenRecognizer {
     /**
      * [Token.StringLiteralToken.lexeme] keeps the quotes, its value drops them
      */
-    override fun tokenOf(lexeme: String, start: Position, end: Position): Token =
+    override fun tokenOf(
+        lexeme: String,
+        start: Position,
+        end: Position,
+    ): Token =
         Token.StringLiteralToken(
             lexeme = lexeme,
             value = lexeme.substring(1, lexeme.length - 1),
             start = start,
-            end = end
+            end = end,
         )
 
-    private fun isQuote(value: Char): Boolean =
-        value == '"' || value == '\''
+    private fun isQuote(value: Char): Boolean = value == '"' || value == '\''
 
-    private fun endsLine(value: Char): Boolean =
-        value == '\n' || value == '\r'
+    private fun endsLine(value: Char): Boolean = value == '\n' || value == '\r'
 }

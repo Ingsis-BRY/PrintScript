@@ -7,7 +7,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
 class NumberLiteralRecognizerTest {
-
     @Test
     fun `is pending on the empty lexeme`() {
         assertEquals(RecognizerState.Pending, NumberLiteralRecognizer.recognize(""))
@@ -74,7 +73,7 @@ class NumberLiteralRecognizerTest {
 
         assertEquals(
             Token.NumberLiteralToken("3.5", "3.5", Position(2, 4), Position(2, 6)),
-            token
+            token,
         )
     }
 

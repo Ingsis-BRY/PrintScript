@@ -4,23 +4,22 @@ import com.printscript.common.Located
 import com.printscript.common.Position
 
 sealed interface Expression : Located {
-
     data class NumberLiteral(
         val value: Double,
         override val start: Position,
-        override val end: Position
+        override val end: Position,
     ) : Expression
 
     data class StringLiteral(
         val value: String,
         override val start: Position,
-        override val end: Position
+        override val end: Position,
     ) : Expression
 
     data class VariableReference(
         val name: String,
         override val start: Position,
-        override val end: Position
+        override val end: Position,
     ) : Expression
 
     data class BinaryExpression(
@@ -28,6 +27,6 @@ sealed interface Expression : Located {
         val operator: BinaryOperator,
         val right: Expression,
         override val start: Position,
-        override val end: Position
+        override val end: Position,
     ) : Expression
 }
