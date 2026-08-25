@@ -7,13 +7,12 @@ kotlin {
 }
 
 dependencies {
-    implementation(project(":common"))
-    implementation(project(":ast"))
-    implementation(project(":token"))
-    implementation(project(":lexer"))
-    implementation(project(":parser"))
-    implementation(project(":report"))
+    api(project(":ast"))
+    api(project(":token"))
+    api(project(":report"))
 
+    testImplementation(project(":lexer"))
+    testImplementation(project(":parser"))
     testImplementation(kotlin("test"))
 }
 

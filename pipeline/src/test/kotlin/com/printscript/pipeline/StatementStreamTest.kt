@@ -9,6 +9,8 @@ import com.printscript.report.Success
 import com.printscript.report.SyntaxSymbol
 import com.printscript.lexer.Lexer
 import com.printscript.lexer.StringSourceReader
+import com.printscript.lexer.recognizer.TokenRecognizers
+import com.printscript.parser.Parser
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -17,8 +19,14 @@ import kotlin.test.assertTrue
 
 class StatementStreamTest {
 
-    private fun streamOf(source: String): StatementStream =
-        StatementStream(Lexer(StringSourceReader(source)))
+    private fun streamOf(source: String): StatementStream {
+        val lexer = Lexer(StringSourceReader(source), TokenRecognizers.DEFAULT)
+
+        return StatementStream(
+            source = TokenSource(lexer::tokens),
+            parser = StatementParser(Parser::parse)
+        )
+    }
 
     // drains the whole stream, failing the test on the first error
     private fun statementsOf(source: String): List<Statement> {

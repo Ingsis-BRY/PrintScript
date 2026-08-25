@@ -7,9 +7,9 @@ kotlin {
 }
 
 dependencies {
-    implementation(project(":common"))
-    implementation(project(":ast"))
-    implementation(project(":report"))
+    api(project(":common"))
+    api(project(":ast"))
+    api(project(":report"))
     implementation(project(":language"))
 
     testImplementation(kotlin("test"))

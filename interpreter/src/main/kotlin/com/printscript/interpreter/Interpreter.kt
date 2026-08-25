@@ -14,9 +14,9 @@ import com.printscript.report.flatMap
 * the environment, on purpose.
 */
 class Interpreter(
-    private val environment: Environment = Environment(),
-    private val output: OutputEmitter = ConsoleOutput(),
-    private val valueOps: ValueOps = ValueOps()
+    private val environment: Environment,
+    private val output: OutputEmitter,
+    private val valueOps: ValueOps
 ) {
 
     fun execute(statement: Statement): Result<Unit> =

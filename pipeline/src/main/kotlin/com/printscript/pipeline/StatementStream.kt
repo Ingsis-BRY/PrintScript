@@ -4,19 +4,20 @@ import com.printscript.ast.Statement
 import com.printscript.report.Failure
 import com.printscript.report.Result
 import com.printscript.report.Success
-import com.printscript.lexer.Lexer
-import com.printscript.parser.Parser
 import com.printscript.token.Token
 
 /**
-* composes the lexer and the parser into a source that hands over one
+* composes a token source and a parser into a source that hands over one
 * [Statement] at a time. tokens are pulled lazily and grouped up to the
 * closing `;`, so the source is never buffered whole: a single statement
 * lives in memory at once.
 */
-class StatementStream(lexer: Lexer) {
+class StatementStream(
+    source: TokenSource,
+    private val parser: StatementParser
+) {
 
-    private val tokens = lexer.tokens().iterator()
+    private val tokens = source.tokens().iterator()
 
     /**
     * whether the source still holds tokens to form a statement
@@ -38,13 +39,13 @@ class StatementStream(lexer: Lexer) {
                     batch.add(result.value)
 
                     if (result.value is Token.SemicolonToken) {
-                        return Parser.parse(batch)
+                        return parser.parse(batch)
                     }
                 }
             }
         }
 
         // ran out of tokens before a `;`: let the parser report what is missing
-        return Parser.parse(batch)
+        return parser.parse(batch)
     }
 }

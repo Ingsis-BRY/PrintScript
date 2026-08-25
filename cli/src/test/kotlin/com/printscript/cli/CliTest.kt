@@ -1,9 +1,18 @@
 package com.printscript.cli
 
+import com.printscript.ast.Expression
+import com.printscript.ast.Statement
+import com.printscript.common.Position
+import com.printscript.common.Span
+import com.printscript.pipeline.StatementParser
+import com.printscript.pipeline.StatementStream
+import com.printscript.pipeline.TokenSource
+import com.printscript.report.Diagnostic
+import com.printscript.report.ErrorRenderer
 import com.printscript.report.Failure
 import com.printscript.report.Result
 import com.printscript.report.Success
-import com.printscript.interpreter.CollectingOutput
+import com.printscript.token.Token
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.test.Test
@@ -15,222 +24,145 @@ import kotlin.test.assertTrue
 
 class CliTest {
 
-    private fun sourceFile(source: String): Path {
+    private val at = Position(1, 1)
+
+    private val divisionByZero = Diagnostic.DivisionByZero(Span.at(at))
+
+    private fun statement(): Statement =
+        Statement.CallStatement("println", Expression.NumberLiteral(1.0, at, at), at, at)
+
+    private fun anyFile(): Path {
         val file = Files.createTempFile("printscript", ".ps")
         file.toFile().deleteOnExit()
-        Files.writeString(file, source)
+        Files.writeString(file, "ignored by the fake stream")
         return file
     }
 
-    // the pieces a run writes to, kept together so a test can inspect any of them
-    private class Run(
-        val output: CollectingOutput = CollectingOutput(),
-        val progress: StringBuilder = StringBuilder(),
-        val errors: StringBuilder = StringBuilder()
+    private fun streamOf(results: List<Result<Statement>>): StatementStream {
+        val pending = ArrayDeque(results)
+
+        return StatementStream(
+            source = TokenSource {
+                results.asSequence().map { Success(Token.SemicolonToken(";", at, at)) }
+            },
+            parser = StatementParser { pending.removeFirst() }
+        )
+    }
+
+    private class RecordingProgram(
+        private val failAt: Int?,
+        private val error: Diagnostic
+    ) : Program {
+
+        val executed = mutableListOf<Statement>()
+
+        override fun execute(statement: Statement): Result<Unit> {
+            executed.add(statement)
+
+            return if (executed.size == failAt) Failure(error) else Success(Unit)
+        }
+    }
+
+    private inner class Run(
+        results: List<Result<Statement>>,
+        failAt: Int? = null
     ) {
-        val cli = Cli(output, ProgressPrinter(progress), errors = errors)
+        val progress = StringBuilder()
+        val errors = StringBuilder()
+        val program = RecordingProgram(failAt, divisionByZero)
+
+        val cli = Cli(
+            newStream = { streamOf(results) },
+            newProgram = { program },
+            renderer = ErrorRenderer(),
+            progress = ProgressPrinter(progress),
+            errors = errors
+        )
     }
 
-    // runs the source and returns the collected program output, failing the test
-    // if the run does not succeed
-    private fun execute(source: String): List<String> {
-        val run = Run()
-
-        assertIs<Success<Unit>>(run.cli.run(Operation.EXECUTION, sourceFile(source)))
-
-        return run.output.lines()
-    }
-
-    // The three spec examples, end to end
+    private fun succeeding(count: Int): List<Result<Statement>> =
+        List(count) { Success(statement()) }
 
     @Test
-    fun `example 1 concatenates strings from file`() {
-        val output = execute(
-            """
-            let name: string = "Joe";
-            let lastName: string = "Doe";
-            println(name + " " + lastName);
-            """.trimIndent()
-        )
+    fun `execution runs every statement in source order`() {
+        val run = Run(succeeding(3))
 
-        assertEquals(listOf("Joe Doe"), output)
-    }
-
-    @Test
-    fun `example 2 divides and prints an integer result from file`() {
-        val output = execute(
-            """
-            let a: number = 12;
-            let b: number = 4;
-            let c: number = a / b;
-            println("Result: " + c);
-            """.trimIndent()
-        )
-
-        assertEquals(listOf("Result: 3"), output)
-    }
-
-    @Test
-    fun `example 3 reassigns before printing from file`() {
-        val output = execute(
-            """
-            let a: number = 12;
-            let b: number = 4;
-            a = a / b;
-            println("Result: " + a);
-            """.trimIndent()
-        )
-
-        assertEquals(listOf("Result: 3"), output)
-    }
-
-    // Execution
-
-    @Test
-    fun `prints several lines in source order`() {
-        val output = execute(
-            """
-            println(1);
-            println(2);
-            println(3);
-            """.trimIndent()
-        )
-
-        assertEquals(listOf("1", "2", "3"), output)
-    }
-
-    @Test
-    fun `reports progress for every statement it parses`() {
-        val run = Run()
-
-        run.cli.run(
-            Operation.EXECUTION,
-            sourceFile(
-                """
-                let x: number = 1;
-                x = 2;
-                println(x);
-                """.trimIndent()
-            )
-        )
-
-        val reported = run.progress.lines().count { it.isNotBlank() }
-        assertEquals(3, reported)
-    }
-
-    // Validation
-
-    @Test
-    fun `validation walks a valid program without executing it`() {
-        val run = Run()
-
-        val result = run.cli.run(
-            Operation.VALIDATION,
-            sourceFile(
-                """
-                let x: number = 1;
-                println(x);
-                """.trimIndent()
-            )
-        )
+        val result = run.cli.run(Operation.EXECUTION, anyFile())
 
         assertIs<Success<Unit>>(result)
-        assertTrue(run.output.lines().isEmpty())
+        assertEquals(3, run.program.executed.size)
     }
 
     @Test
-    fun `validation reports a syntax error and stops`() {
-        val run = Run()
+    fun `execution stops at the first statement that fails`() {
+        val run = Run(succeeding(3), failAt = 2)
 
-        val result = run.cli.run(Operation.VALIDATION, sourceFile("let x number = 5;"))
-
-        assertIs<Failure>(result)
-        assertContains(run.errors.toString(), "Expected ':'")
-    }
-
-    // Errors cut the run and reach the renderer
-
-    @Test
-    fun `execution stops at the first error but keeps the output before it`() {
-        val run = Run()
-
-        val result = run.cli.run(
-            Operation.EXECUTION,
-            sourceFile(
-                """
-                println(1);
-                let b: number = 2 / 0;
-                println(3);
-                """.trimIndent()
-            )
-        )
+        val result = run.cli.run(Operation.EXECUTION, anyFile())
 
         assertIs<Failure>(result)
-        assertEquals(listOf("1"), run.output.lines())
+        assertEquals(2, run.program.executed.size, "the third statement should never run")
         assertContains(run.errors.toString(), "Division by zero.")
     }
 
     @Test
-    fun `a syntax error is reported and stops the run`() {
-        val run = Run()
+    fun `a failure from the stream stops the run and reaches the renderer`() {
+        val run = Run(listOf(Success(statement()), Failure(divisionByZero)))
 
-        val result = run.cli.run(Operation.EXECUTION, sourceFile("let x number = 5;"))
+        val result = run.cli.run(Operation.EXECUTION, anyFile())
 
         assertIs<Failure>(result)
-        assertContains(run.errors.toString(), "Expected ':'")
+        assertEquals(1, run.program.executed.size)
+        assertEquals("(1:1)-(1:1) Division by zero.", run.errors.toString().trim())
     }
 
     @Test
-    fun `a lexical error is reported and stops the run`() {
-        val run = Run()
+    fun `progress is reported once per statement`() {
+        val run = Run(succeeding(3))
 
-        val result = run.cli.run(Operation.EXECUTION, sourceFile("let x = @;"))
+        run.cli.run(Operation.EXECUTION, anyFile())
 
-        assertIs<Failure>(result)
-        assertContains(run.errors.toString(), "Unexpected character '@'.")
+        assertEquals(3, run.progress.lines().count { it.isNotBlank() })
     }
 
     @Test
-    fun `an undeclared variable is reported`() {
-        val run = Run()
+    fun `validation walks the statements without running any`() {
+        val run = Run(succeeding(3))
 
-        val result = run.cli.run(Operation.EXECUTION, sourceFile("println(missing);"))
+        val result = run.cli.run(Operation.VALIDATION, anyFile())
 
-        assertIs<Failure>(result)
-        assertContains(run.errors.toString(), "Variable 'missing' is not declared.")
+        assertIs<Success<Unit>>(result)
+        assertTrue(run.program.executed.isEmpty(), "validation must not execute")
+        assertEquals(3, run.progress.lines().count { it.isNotBlank() })
     }
 
     @Test
-    fun `a reported error carries its span from first to last character`() {
-        val run = Run()
+    fun `validation reports the first failure and stops`() {
+        val run = Run(listOf(Success(statement()), Failure(divisionByZero), Success(statement())))
 
-        run.cli.run(Operation.EXECUTION, sourceFile("println(1 / 0);"))
+        val result = run.cli.run(Operation.VALIDATION, anyFile())
 
-        assertEquals("(1:9)-(1:13) Division by zero.", run.errors.toString().trim())
+        assertIs<Failure>(result)
+        assertContains(run.errors.toString(), "Division by zero.")
     }
-
-    // Version
 
     @Test
     fun `the supported version is accepted`() {
-        val run = Run()
+        val run = Run(succeeding(1))
 
-        val result: Result<Unit> =
-            run.cli.run(Operation.EXECUTION, sourceFile("println(1);"), version = "1.0")
+        val result = run.cli.run(Operation.EXECUTION, anyFile(), version = "1.0")
 
         assertIs<Success<Unit>>(result)
-        assertEquals(listOf("1"), run.output.lines())
     }
 
     @Test
     fun `an unsupported version is rejected before the file is read`() {
-        val run = Run()
+        val run = Run(succeeding(1))
 
         val error = assertFailsWith<IllegalArgumentException> {
-            run.cli.run(Operation.EXECUTION, sourceFile("println(1);"), version = "9.9")
+            run.cli.run(Operation.EXECUTION, anyFile(), version = "9.9")
         }
 
         assertContains(error.message.orEmpty(), "Unsupported version")
-        assertTrue(run.output.lines().isEmpty())
+        assertTrue(run.program.executed.isEmpty())
     }
 }

@@ -1,72 +1,112 @@
 ' ============================================================
 '  PrintScript
-'  Diagrama 1: componentes (módulos y dependencias)
+'  Diagrama 1: componentes (modulos y dependencias)
 '  Diagrama 2: clases
 ' ============================================================
 
 @startuml componentes
-title PrintScript — Componentes (primera entrega)
+title PrintScript — Componentes (11 modulos Gradle)
 
 package "PrintScript" {
-    [common]      <<módulo>>
-    [token]       <<módulo>>
-    [ast]         <<módulo>>
-    [language]    <<módulo>>
-    [lexer]       <<módulo>>
-    [parser]      <<módulo>>
-    [interpreter] <<módulo>>
-    [pipeline]    <<módulo>>
-    [cli]         <<módulo>>
+    [common]      <<modulo>>
+    [token]       <<modulo>>
+    [ast]         <<modulo>>
+    [report]      <<modulo>>
+    [language]    <<modulo>>
+    [lexer]       <<modulo>>
+    [parser]      <<modulo>>
+    [interpreter] <<modulo>>
+    [pipeline]    <<modulo>>
+    [cli]         <<modulo>>
+    [app]         <<modulo>>
 }
 
 note right of [common]
-  Position, Result<T>,
-  catálogo de errores (ADT),
-  ErrorRenderer
+  Position, Span, Located.
+  Donde esta algo en el fuente.
+  Modulo hoja: no depende de nadie.
+end note
+
+note right of [report]
+  Result<T> y el catalogo de errores
+  (Diagnostic, ADT sellado) + ErrorRenderer.
+  Result y Diagnostic viven juntos porque
+  Failure(error: Diagnostic) es un solo tipo.
 end note
 
 note right of [language]
-  Qué significa "number" en PrintScript
-  y qué devuelve cada operador.
-  Única fuente de verdad.
+  Que significa "number" en PrintScript
+  y que devuelve cada operador.
+  Unica fuente de verdad.
 end note
 
 note right of [pipeline]
-  Compone lexer + parser y entrega
-  un statement por vez.
-  Lo consumen todas las operaciones.
+  Entrega un statement por vez.
+  Declara TokenSource y StatementParser,
+  asi que NO depende de lexer ni de parser:
+  las interfaces viven en el consumidor.
+end note
+
+note right of [cli]
+  Cli declara Program y conduce una corrida a traves
+  de Program y StatementStream. No depende de lexer,
+  parser ni interpreter: no los tiene en el classpath.
+end note
+
+note right of [app]
+  El composition root, en su propio modulo.
+  Es el unico que depende de :lexer, :parser e
+  :interpreter, asi que la regla la hace cumplir
+  Gradle y no la convencion.
 end note
 
 [token]       --> [common]
 [ast]         --> [common]
+
+[report]      --> [common]
+[report]      --> [ast]
+
 [language]    --> [common]
 [language]    --> [ast]
+[language]    --> [report]
 
-[lexer]       --> [token]
 [lexer]       --> [common]
+[lexer]       --> [token]
+[lexer]       --> [report]
 
+[parser]      --> [common]
 [parser]      --> [token]
 [parser]      --> [ast]
 [parser]      --> [language]
-[parser]      --> [common]
+[parser]      --> [report]
 
+[interpreter] --> [common]
 [interpreter] --> [ast]
 [interpreter] --> [language]
-[interpreter] --> [common]
+[interpreter] --> [report]
 
-[pipeline]    --> [lexer]
-[pipeline]    --> [parser]
-[pipeline]    --> [common]
+[pipeline]    --> [token]
+[pipeline]    --> [ast]
+[pipeline]    --> [report]
 
-[cli]         --> [pipeline]
-[cli]         --> [interpreter]
 [cli]         --> [common]
+[cli]         --> [ast]
+[cli]         --> [pipeline]
+[cli]         --> [report]
+
+' el unico modulo que nombra implementaciones concretas
+[app]         --> [cli]
+[app]         --> [pipeline]
+[app]         --> [report]
+[app]         --> [lexer]
+[app]         --> [parser]
+[app]         --> [interpreter]
 
 @enduml
 
 
 @startuml clases
-title PrintScript — Clases (primera entrega)
+title PrintScript — Clases
 
 ' ------------------------------------------------------------
 package common {
@@ -76,56 +116,118 @@ package common {
         +column: Int
     }
 
+    class Span {
+        +start: Position
+        +end: Position
+        +at(position: Position): Span
+    }
+
+    interface Located {
+        +start: Position
+        +end: Position
+        +span: Span
+    }
+
+    Span *--> Position
+    Located ..> Span : expone
+}
+
+' ------------------------------------------------------------
+package report {
+
     interface Result<T> <<sealed>>
 
     class Success<T> implements Result {
         +value: T
     }
 
-    class Failure<T> implements Result {
-        +error: PrintScriptError
+    class Failure implements Result {
+        +error: Diagnostic
     }
 
-    interface PrintScriptError <<sealed>> {
-        +start: Position
-        +end: Position
+    note right of Result
+      map / flatMap / fold
+      son funciones de extension
+    end note
+
+    interface Diagnostic <<sealed>> {
+        +span: Span
     }
 
-    interface LexicalError <<sealed>> extends PrintScriptError
-    class UnexpectedCharacter implements LexicalError {
+    class UnexpectedCharacter implements Diagnostic {
         +character: Char
     }
-    class UnterminatedString implements LexicalError
-
-    interface SyntaxError <<sealed>> extends PrintScriptError
-    class UnexpectedToken implements SyntaxError {
-        +found: String
-        +expected: String
+    class MalformedLexeme implements Diagnostic {
+        +fault: LexicalFault
     }
-    class MissingSemicolon implements SyntaxError
-    class MalformedNumber implements SyntaxError {
+    class SourceUnreadable implements Diagnostic {
+        +detail: String
+    }
+
+    class ExpectedSymbol implements Diagnostic {
+        +expected: SyntaxSymbol
+    }
+    class UnexpectedToken implements Diagnostic {
         +lexeme: String
     }
+    class UnexpectedEndOfInput implements Diagnostic {
+        +unit: SyntacticUnit
+    }
+    class UnknownType implements Diagnostic {
+        +name: String
+    }
+    class MalformedNumber implements Diagnostic {
+        +text: String
+    }
 
-    interface RuntimeError <<sealed>> extends PrintScriptError
-    class UndeclaredVariable implements RuntimeError {
+    class VariableAlreadyDeclared implements Diagnostic {
         +name: String
     }
-    class UninitializedVariable implements RuntimeError {
+    class VariableNotDeclared implements Diagnostic {
         +name: String
     }
-    class DuplicateDeclaration implements RuntimeError {
+    class VariableWithoutValue implements Diagnostic {
         +name: String
     }
-    class TypeMismatch implements RuntimeError {
-        +expected: String
-        +actual: String
+    class IncompatibleAssignment implements Diagnostic {
+        +declared: Type
+        +actual: Type
     }
-    class DivisionByZero implements RuntimeError
+    class IncompatibleOperands implements Diagnostic {
+        +operator: BinaryOperator
+        +left: Type
+        +right: Type
+    }
+    class UnknownFunction implements Diagnostic {
+        +name: String
+    }
+    class DivisionByZero implements Diagnostic
+
+    enum LexicalFault {
+        UNTERMINATED_STRING
+    }
+    enum SyntaxSymbol {
+        LET
+        IDENTIFIER
+        COLON
+        TYPE_NAME
+        ASSIGN
+        SEMICOLON
+        LEFT_PAREN
+        RIGHT_PAREN
+        PRINTLN
+    }
+    enum SyntacticUnit {
+        EXPRESSION
+        STATEMENT
+    }
 
     class ErrorRenderer {
-        +render(error: PrintScriptError): String
+        +render(error: Diagnostic): String
     }
+
+    Diagnostic *--> Span
+    Failure o--> Diagnostic
 }
 
 ' ------------------------------------------------------------
@@ -133,9 +235,8 @@ package token {
 
     interface Token <<sealed>> {
         +lexeme: String
-        +start: Position
-        +end: Position
     }
+    Token --|> Located
 
     class LetToken implements Token
     class IdentifierToken implements Token {
@@ -164,18 +265,15 @@ package token {
 ' ------------------------------------------------------------
 package ast {
 
-    interface Node <<sealed>> {
-        +start: Position
-        +end: Position
-    }
-
-    interface Statement <<sealed>> extends Node
-    interface Expression <<sealed>> extends Node
+    interface Statement <<sealed>>
+    interface Expression <<sealed>>
+    Statement --|> Located
+    Expression --|> Located
 
     class VariableDeclaration implements Statement {
         +name: String
         +declaredType: Type
-        +initializer: Expression
+        +initializer: Expression?
     }
     class Assignment implements Statement {
         +name: String
@@ -215,71 +313,89 @@ package ast {
 ' ------------------------------------------------------------
 package language {
 
-    class NumberCodec {
-        +parse(text: String): Result<Double>
+    class NumberCodec <<object>> {
+        +parse(text: String, span: Span): Result<Double>
         +render(value: Double): String
     }
 
-    class OperatorRules {
-        +resultType(op: BinaryOperator, left: Type, right: Type): Result<Type>
+    class OperatorRules <<object>> {
+        +resultType(op: BinaryOperator, left: Type, right: Type): Type?
     }
+
+    note bottom of OperatorRules
+      devuelve null, no un error:
+      no tiene posicion que culpar
+    end note
 }
 
 ' ------------------------------------------------------------
 package lexer {
 
     interface SourceReader {
-        +peek(): Char
-        +next(): Char
+        +peek(): SourceChar
+        +peekNext(): SourceChar
+        +next(): SourceChar
         +hasNext(): Boolean
     }
 
     class StreamSourceReader implements SourceReader
+    class StringSourceReader implements SourceReader
 
-    class StatementLexer {
-        -reader: SourceReader
-        -line: Int
-        -column: Int
-
-        +hasNext(): Boolean
-        +next(): Result<List<Token>>
-
-        -readToken(): Result<Token>
-        -readNumber(): Result<Token>
-        -readIdentifierOrKeyword(): Result<Token>
-        -readString(): Result<Token>
-        -readSymbol(): Result<Token>
-        -skipWhitespace()
+    interface SourceChar <<sealed>>
+    class Character implements SourceChar {
+        +value: Char
     }
+    class EndOfSource implements SourceChar
+    class Failed implements SourceChar {
+        +message: String
+    }
+
+    class Lexer {
+        -reader: SourceReader
+        -recognizers: List<TokenRecognizer>
+        +tokens(): Sequence<Result<Token>>
+    }
+
+    interface TokenRecognizer {
+        +recognize(lexeme: String): RecognizerState
+        +tokenOf(lexeme: String, start: Position, end: Position): Token
+        +diagnose(lexeme: String): LexicalFault?
+    }
+
+    class FixedLexemeRecognizer implements TokenRecognizer
+    class IdentifierRecognizer <<object>> implements TokenRecognizer
+    class NumberLiteralRecognizer <<object>> implements TokenRecognizer
+    class StringLiteralRecognizer <<object>> implements TokenRecognizer
+
+    interface RecognizerState <<sealed>>
+
+    class TokenRecognizers <<object>> {
+        +DEFAULT: List<TokenRecognizer>
+    }
+
+    note bottom of Lexer
+      maximal munch: gana el lexema mas largo;
+      si empatan, el orden de TokenRecognizers.DEFAULT
+    end note
 }
 
 ' ------------------------------------------------------------
 package parser {
 
-    class Parser {
-        -numbers: NumberCodec
-        -precedences: PrecedenceTable
-
+    class Parser <<object>> {
         +parse(tokens: List<Token>): Result<Statement>
-
-        -parseDeclaration(cursor: TokenCursor): Result<Statement>
-        -parseAssignment(cursor: TokenCursor): Result<Statement>
-        -parseCall(cursor: TokenCursor): Result<Statement>
-        -parseExpression(cursor: TokenCursor, precedence: Int): Result<Expression>
-        -parsePrefix(cursor: TokenCursor): Result<Expression>
-        -parseInfix(cursor: TokenCursor, left: Expression): Result<Expression>
+        +parseExpression(tokens: List<Token>): Result<Expression>
     }
 
     class TokenCursor {
         -tokens: List<Token>
         -index: Int
-
-        +peek(): Token
-        +consume(): Token
+        +peek(): Token?
+        +consume(): Token?
         +hasNext(): Boolean
     }
 
-    class PrecedenceTable {
+    class PrecedenceTable <<object>> {
         +precedenceOf(token: Token): Int
     }
 }
@@ -290,20 +406,16 @@ package interpreter {
     class Interpreter {
         -environment: Environment
         -output: OutputEmitter
-        -operations: ValueOps
-        -numbers: NumberCodec
-
+        -valueOps: ValueOps
         +execute(statement: Statement): Result<Unit>
-        -evaluate(expression: Expression): Result<Value>
     }
 
     class Environment {
         -slots: MutableMap<String, Slot>
-
-        +declare(name: String, type: Type): Result<Unit>
-        +initialize(name: String, value: Value): Result<Unit>
-        +assign(name: String, value: Value): Result<Unit>
-        +lookup(name: String): Result<Value>
+        +declare(name: String, type: Type, span: Span): Result<Unit>
+        +initialize(name: String, value: Value, span: Span): Result<Unit>
+        +assign(name: String, value: Value, span: Span): Result<Unit>
+        +lookup(name: String, span: Span): Result<Value>
     }
 
     interface Slot <<sealed>>
@@ -314,7 +426,9 @@ package interpreter {
         +value: Value
     }
 
-    interface Value <<sealed>>
+    interface Value <<sealed>> {
+        +type: Type
+    }
     class NumberValue implements Value {
         +value: Double
     }
@@ -323,8 +437,7 @@ package interpreter {
     }
 
     class ValueOps {
-        -rules: OperatorRules
-        +apply(op: BinaryOperator, left: Value, right: Value): Result<Value>
+        +apply(op: BinaryOperator, left: Value, right: Value, span: Span): Result<Value>
     }
 
     interface OutputEmitter {
@@ -339,13 +452,28 @@ package interpreter {
 ' ------------------------------------------------------------
 package pipeline {
 
-    class StatementStream {
-        -lexer: StatementLexer
-        -parser: Parser
+    interface TokenSource <<fun>> {
+        +tokens(): Sequence<Result<Token>>
+    }
 
+    interface StatementParser <<fun>> {
+        +parse(tokens: List<Token>): Result<Statement>
+    }
+
+    class StatementStream {
+        -tokens: Iterator<Result<Token>>
+        -parser: StatementParser
         +hasNext(): Boolean
         +next(): Result<Statement>
     }
+
+    StatementStream --> TokenSource
+    StatementStream --> StatementParser
+
+    note bottom of TokenSource
+      declaradas por el consumidor.
+      pipeline no depende de lexer ni de parser
+    end note
 }
 
 ' ------------------------------------------------------------
@@ -356,32 +484,60 @@ package cli {
         EXECUTION
     }
 
-    class Cli {
-        +run(operation: Operation, file: Path, version: String)
-        -execute(stream: StatementStream)
-        -validate(stream: StatementStream)
-        -report(error: PrintScriptError)
+    interface Program <<fun>> {
+        +execute(statement: Statement): Result<Unit>
     }
 
+    class Cli {
+        -newStream: (Reader) -> StatementStream
+        -newProgram: () -> Program
+        -renderer: ErrorRenderer
+        -progress: ProgressPrinter
+        -errors: Appendable
+        +run(operation: Operation, file: Path, version: String?): Result<Unit>
+    }
+
+    Cli --> Program
+
     class ProgressPrinter {
+        -sink: Appendable
         +statementParsed(position: Position)
     }
+
 }
 
 ' ------------------------------------------------------------
-' Relaciones
+package app {
+
+    class Main <<composition root>> {
+        +main(args: Array<String>)
+    }
+
+    note bottom of Main
+      Pure DI: arma el grafo a mano y es el unico
+      que nombra clases concretas. Lo que depende de
+      un valor de runtime entra como factory:
+      el stream (necesita el Reader, es de un solo uso)
+      y el Program (estado vacio por corrida).
+      Satisface TokenSource, StatementParser y Program
+      con referencias a metodo, sin clases adaptadoras.
+    end note
+}
+
+' ------------------------------------------------------------
+' Relaciones entre paquetes
 ' ------------------------------------------------------------
 
-StatementLexer *--> SourceReader
-StatementLexer ..> Token : construye
-Token *--> Position
+Lexer *--> SourceReader
+Lexer o--> TokenRecognizer
+Lexer ..> Token : construye
+TokenRecognizers ..> TokenRecognizer : lista por prioridad
 
 Parser ..> Token : consume
 Parser *--> TokenCursor
-Parser *--> PrecedenceTable
-Parser --> NumberCodec : convierte literales
+Parser ..> PrecedenceTable
+Parser ..> NumberCodec : convierte literales
 Parser ..> Statement : construye
-Node *--> Position
 
 VariableDeclaration o--> Type
 VariableDeclaration o--> Expression
@@ -391,27 +547,36 @@ BinaryExpression o--> BinaryOperator
 
 OperatorRules ..> Type
 
-StatementStream *--> StatementLexer
-StatementStream *--> Parser
+Lexer ..|> TokenSource : via Main
+Parser ..|> StatementParser : via Main
+Interpreter ..|> Program : via Main
 
 Interpreter *--> Environment
 Interpreter *--> ValueOps
 Interpreter --> OutputEmitter
-Interpreter --> NumberCodec : imprime números
 Interpreter ..> Statement : ejecuta
 Environment o--> Slot
 Slot o--> Value
-ValueOps --> OperatorRules
+ValueOps ..> OperatorRules
+ValueOps ..> NumberCodec : imprime numeros
 
-Cli --> StatementStream : consume
-Cli --> Interpreter
+Cli ..> StatementStream : consume
 Cli --> ErrorRenderer
 Cli *--> ProgressPrinter
 
-StatementLexer ..> Result : devuelve
+Main ..> Cli : construye
+Main ..> Lexer : construye
+Main ..> StatementStream : construye
+Main ..> Interpreter : construye
+Main ..> ConsoleOutput : construye
+Main ..> TokenSource : Lexer::tokens
+Main ..> StatementParser : Parser::parse
+Main ..> Program : Interpreter::execute
+
+Lexer ..> Result : devuelve
 Parser ..> Result : devuelve
 Interpreter ..> Result : devuelve
-Result ..> PrintScriptError
-ErrorRenderer ..> PrintScriptError : abre el ADT
+Result ..> Diagnostic
+ErrorRenderer ..> Diagnostic : abre el ADT
 
 @enduml
