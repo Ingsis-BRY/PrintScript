@@ -19,7 +19,7 @@ subprojects {
 
     tasks.withType<dev.detekt.gradle.Detekt>().configureEach {
         config.setFrom(rootProject.file("config/detekt/detekt.yml"))
-        buildUponDefaultConfig.set(true)
+        buildUponDefaultConfig.set(false)
         ignoreFailures.set(false)
     }
 }
