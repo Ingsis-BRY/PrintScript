@@ -1,7 +1,0 @@
-complexity:
-  LongMethod:
-    allowedLines: 30
-
-style:
-  MagicNumber:
-    active: false
