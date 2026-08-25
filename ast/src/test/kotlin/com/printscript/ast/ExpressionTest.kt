@@ -85,24 +85,12 @@ class ExpressionTest {
 
     @Test
     fun `nested binary expression should have position covering its children`() {
-        val left = Expression.NumberLiteral(
-            value = 10.0,
-            start = Position(1, 1),
-            end = Position(1, 2)
-        )
+        val left = number(10.0, 1, 2)
 
         val right = Expression.BinaryExpression(
-            left = Expression.NumberLiteral(
-                value = 20.0,
-                start = Position(1, 5),
-                end = Position(1, 6)
-            ),
+            left = number(20.0, 5, 6),
             operator = BinaryOperator.Multiplication,
-            right = Expression.NumberLiteral(
-                value = 30.0,
-                start = Position(1, 9),
-                end = Position(1, 10)
-            ),
+            right = number(30.0, 9, 10),
             start = Position(1, 5),
             end = Position(1, 10)
         )
@@ -117,11 +105,16 @@ class ExpressionTest {
 
         assertEquals(Position(1, 1), expression.start)
         assertEquals(Position(1, 10), expression.end)
-
         assertEquals(Position(1, 1), expression.left.start)
         assertEquals(Position(1, 2), expression.left.end)
-
         assertEquals(Position(1, 5), expression.right.start)
         assertEquals(Position(1, 10), expression.right.end)
     }
+
+    private fun number(value: Double, start: Int, end: Int) =
+        Expression.NumberLiteral(
+            value = value,
+            start = Position(1, start),
+            end = Position(1, end)
+        )
 }
