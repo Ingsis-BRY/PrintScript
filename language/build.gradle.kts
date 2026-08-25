@@ -8,8 +8,8 @@ kotlin {
 
 dependencies {
     implementation(project(":common"))
-    implementation(project(":ast"))
-    implementation(project(":report"))
+    api(project(":ast"))
+    api(project(":report"))
 
     testImplementation(kotlin("test"))
 }
