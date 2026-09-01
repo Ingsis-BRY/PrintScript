@@ -17,9 +17,11 @@ class ExpressionParsingTest {
     @Test
     fun `should parse a number literal`() {
         val result =
-            Parser.parseExpression(
-                listOf(number("42", 2, 4)),
-            )
+            ExpressionParser(
+                TokenCursor(
+                    listOf(number("42", 2, 4)),
+                ),
+            ).parse()
 
         assertEquals(
             Success(
@@ -36,9 +38,13 @@ class ExpressionParsingTest {
     @Test
     fun `should parse a decimal number literal`() {
         val result =
-            Parser.parseExpression(
-                listOf(number("3.14", 4, 7)),
-            )
+            (
+                ExpressionParser(
+                    TokenCursor(
+                        listOf(number("3.14", 4, 7)),
+                    ),
+                )
+            ).parse()
 
         assertEquals(
             Success(
@@ -55,9 +61,11 @@ class ExpressionParsingTest {
     @Test
     fun `should parse a string literal`() {
         val result =
-            Parser.parseExpression(
-                listOf(string("hello", 3, 5)),
-            )
+            ExpressionParser(
+                TokenCursor(
+                    listOf(string("hello", 3, 5)),
+                ),
+            ).parse()
 
         assertEquals(
             Success(
@@ -74,9 +82,11 @@ class ExpressionParsingTest {
     @Test
     fun `should parse another string literal at a different position`() {
         val result =
-            Parser.parseExpression(
-                listOf(string("world", 6, 8)),
-            )
+            ExpressionParser(
+                TokenCursor(
+                    listOf(string("world", 6, 8)),
+                ),
+            ).parse()
 
         assertEquals(
             Success(
@@ -93,9 +103,11 @@ class ExpressionParsingTest {
     @Test
     fun `should parse a variable reference`() {
         val result =
-            Parser.parseExpression(
-                listOf(identifier("foo", 5, 3)),
-            )
+            ExpressionParser(
+                TokenCursor(
+                    listOf(identifier("foo", 5, 3)),
+                ),
+            ).parse()
 
         assertEquals(
             Success(
@@ -112,9 +124,11 @@ class ExpressionParsingTest {
     @Test
     fun `should parse another variable reference at a different position`() {
         val result =
-            Parser.parseExpression(
-                listOf(identifier("total", 8, 6)),
-            )
+            ExpressionParser(
+                TokenCursor(
+                    listOf(identifier("total", 8, 6)),
+                ),
+            ).parse()
 
         assertEquals(
             Success(
@@ -131,13 +145,15 @@ class ExpressionParsingTest {
     @Test
     fun `should parse addition`() {
         val result =
-            Parser.parseExpression(
-                listOf(
-                    number("12", 2, 3),
-                    plus(2, 6),
-                    number("7", 2, 8),
+            ExpressionParser(
+                TokenCursor(
+                    listOf(
+                        number("12", 2, 3),
+                        plus(2, 6),
+                        number("7", 2, 8),
+                    ),
                 ),
-            )
+            ).parse()
 
         assertEquals(
             Success(
@@ -166,15 +182,17 @@ class ExpressionParsingTest {
     @Test
     fun `multiplication should have higher precedence than addition`() {
         val result =
-            Parser.parseExpression(
-                listOf(
-                    number("8", 4, 2),
-                    plus(4, 4),
-                    number("15", 4, 6),
-                    star(4, 9),
-                    number("3", 4, 11),
+            ExpressionParser(
+                TokenCursor(
+                    listOf(
+                        number("8", 4, 2),
+                        plus(4, 4),
+                        number("15", 4, 6),
+                        star(4, 9),
+                        number("3", 4, 11),
+                    ),
                 ),
-            )
+            ).parse()
 
         val expected =
             Expression.BinaryExpression(
@@ -213,17 +231,19 @@ class ExpressionParsingTest {
     @Test
     fun `should respect parentheses over operator precedence`() {
         val result =
-            Parser.parseExpression(
-                listOf(
-                    leftParen(6, 4),
-                    number("5", 6, 5),
-                    plus(6, 7),
-                    number("6", 6, 9),
-                    rightParen(6, 10),
-                    star(6, 12),
-                    number("2", 6, 14),
+            ExpressionParser(
+                TokenCursor(
+                    listOf(
+                        leftParen(6, 4),
+                        number("5", 6, 5),
+                        plus(6, 7),
+                        number("6", 6, 9),
+                        rightParen(6, 10),
+                        star(6, 12),
+                        number("2", 6, 14),
+                    ),
                 ),
-            )
+            ).parse()
 
         val expected =
             Expression.BinaryExpression(
@@ -262,17 +282,19 @@ class ExpressionParsingTest {
     @Test
     fun `should parse nested expression with three levels`() {
         val result =
-            Parser.parseExpression(
-                listOf(
-                    number("10", 9, 2),
-                    plus(9, 5),
-                    number("20", 9, 7),
-                    star(9, 10),
-                    number("3", 9, 12),
-                    minus(9, 14),
-                    number("4", 9, 16),
+            ExpressionParser(
+                TokenCursor(
+                    listOf(
+                        number("10", 9, 2),
+                        plus(9, 5),
+                        number("20", 9, 7),
+                        star(9, 10),
+                        number("3", 9, 12),
+                        minus(9, 14),
+                        number("4", 9, 16),
+                    ),
                 ),
-            )
+            ).parse()
 
         val expected =
             Expression.BinaryExpression(
@@ -323,9 +345,11 @@ class ExpressionParsingTest {
     @Test
     fun `should propagate malformed number error`() {
         val result =
-            Parser.parseExpression(
-                listOf(number("1.2.3", 11, 5)),
-            )
+            ExpressionParser(
+                TokenCursor(
+                    listOf(number("1.2.3", 11, 5)),
+                ),
+            ).parse()
 
         val failure = assertIs<Failure>(result)
 
@@ -341,9 +365,11 @@ class ExpressionParsingTest {
     @Test
     fun `should return error for unexpected token`() {
         val result =
-            Parser.parseExpression(
-                listOf(plus(13, 7)),
-            )
+            ExpressionParser(
+                TokenCursor(
+                    listOf(plus(13, 7)),
+                ),
+            ).parse()
 
         val failure = assertIs<Failure>(result)
 
@@ -359,14 +385,16 @@ class ExpressionParsingTest {
     @Test
     fun `should return error when closing parenthesis is missing`() {
         val result =
-            Parser.parseExpression(
-                listOf(
-                    leftParen(15, 3),
-                    number("9", 15, 4),
-                    plus(15, 6),
-                    number("11", 15, 8),
+            ExpressionParser(
+                TokenCursor(
+                    listOf(
+                        leftParen(15, 3),
+                        number("9", 15, 4),
+                        plus(15, 6),
+                        number("11", 15, 8),
+                    ),
                 ),
-            )
+            ).parse()
 
         val failure = assertIs<Failure>(result)
 
@@ -383,13 +411,15 @@ class ExpressionParsingTest {
     @Test
     fun `should parse parenthesized expression with different position`() {
         val result =
-            Parser.parseExpression(
-                listOf(
-                    leftParen(18, 7),
-                    number("25", 18, 8),
-                    rightParen(18, 10),
+            ExpressionParser(
+                TokenCursor(
+                    listOf(
+                        leftParen(18, 7),
+                        number("25", 18, 8),
+                        rightParen(18, 10),
+                    ),
                 ),
-            )
+            ).parse()
 
         assertEquals(
             Success(
