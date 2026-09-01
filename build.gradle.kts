@@ -43,14 +43,19 @@ tasks.register("installGitHook") {
     }
 }
 
+// :app queda fuera de la medicion: solo contiene el entrypoint, que cablea los
+// modulos y termina el proceso con exitProcess. Invocarlo desde un test mataria
+// la JVM del worker, asi que no es codigo que se pueda cubrir.
+val coveredProjects = subprojects.filter { it.name != "app" }
+
 // entradas comunes al reporte y a la verificacion: los .exec, las fuentes y
-// las clases compiladas de todos los submodulos
+// las clases compiladas de los modulos medidos
 val executionFiles = files(
-    subprojects.map { it.layout.buildDirectory.file("jacoco/test.exec") }
+    coveredProjects.map { it.layout.buildDirectory.file("jacoco/test.exec") }
 )
-val sourceDirs = files(subprojects.map { it.file("src/main/kotlin") })
+val sourceDirs = files(coveredProjects.map { it.file("src/main/kotlin") })
 val classDirs = files(
-    subprojects.map { it.layout.buildDirectory.dir("classes/kotlin/main") }
+    coveredProjects.map { it.layout.buildDirectory.dir("classes/kotlin/main") }
 )
 
 /**
@@ -58,7 +63,7 @@ val classDirs = files(
 * en HTML y para que CI lo consuma en XML
 */
 val coverageReport by tasks.registering(JacocoReport::class) {
-    dependsOn(subprojects.map { it.tasks.named("test") })
+    dependsOn(coveredProjects.map { it.tasks.named("test") })
 
     executionData.setFrom(executionFiles.filter { it.exists() })
     sourceDirectories.setFrom(sourceDirs)
@@ -83,10 +88,26 @@ val coverageVerification by tasks.registering(JacocoCoverageVerification::class)
     classDirectories.setFrom(classDirs)
 
     violationRules {
+        // las seis metricas que mide JaCoCo, todas contra el mismo umbral: asi
+        // el numero es el mismo lo mire quien lo mire, sin depender de que
+        // columna del reporte se lea. BRANCH es la que mas aporta: una linea
+        // con `a || b` cuenta como cubierta aunque nunca se haya ejercitado la
+        // segunda mitad, y solo esa metrica lo detecta.
         rule {
-            limit {
-                counter = "LINE"
-                minimum = "0.80".toBigDecimal()
+            element = "BUNDLE"
+
+            listOf(
+                "INSTRUCTION",
+                "BRANCH",
+                "LINE",
+                "COMPLEXITY",
+                "METHOD",
+                "CLASS",
+            ).forEach { metric ->
+                limit {
+                    counter = metric
+                    minimum = "0.80".toBigDecimal()
+                }
             }
         }
     }
