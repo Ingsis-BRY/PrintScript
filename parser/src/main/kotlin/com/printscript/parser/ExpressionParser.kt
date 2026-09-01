@@ -15,7 +15,7 @@ import com.printscript.report.flatMap
 import com.printscript.report.map
 import com.printscript.token.Token
 
-class ExpressionParser(
+internal class ExpressionParser(
     private val cursor: TokenCursor,
 ) {
     fun parse(): Result<Expression> = parseExpression(cursor, 0)
