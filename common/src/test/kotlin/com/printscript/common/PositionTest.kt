@@ -5,7 +5,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNotEquals
 
 class PositionTest {
-
     @Test
     fun `should create position with line and column`() {
         val position = Position(3, 7)

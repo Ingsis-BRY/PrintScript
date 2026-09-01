@@ -4,7 +4,6 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
 class BinaryOperatorTest {
-
     @Test
     fun `addition is a BinaryOperator`() {
         assertEquals(BinaryOperator.Addition, BinaryOperator.Addition)
@@ -27,12 +26,13 @@ class BinaryOperatorTest {
 
     @Test
     fun `all operators are valid BinaryOperators`() {
-        val operators: List<BinaryOperator> = listOf(
-            BinaryOperator.Addition,
-            BinaryOperator.Subtraction,
-            BinaryOperator.Multiplication,
-            BinaryOperator.Division
-        )
+        val operators: List<BinaryOperator> =
+            listOf(
+                BinaryOperator.Addition,
+                BinaryOperator.Subtraction,
+                BinaryOperator.Multiplication,
+                BinaryOperator.Division,
+            )
 
         assertEquals(4, operators.size)
     }

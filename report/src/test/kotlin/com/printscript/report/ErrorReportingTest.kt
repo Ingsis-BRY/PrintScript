@@ -2,8 +2,8 @@ package com.printscript.report
 
 import com.printscript.interpreter.CollectingOutput
 import com.printscript.interpreter.Environment
-import com.printscript.interpreter.ValueOps
 import com.printscript.interpreter.Interpreter
+import com.printscript.interpreter.ValueOps
 import com.printscript.lexer.Lexer
 import com.printscript.lexer.StringSourceReader
 import com.printscript.lexer.recognizer.TokenRecognizers
@@ -21,7 +21,6 @@ import kotlin.test.fail
  * span it carries has to survive the trip to [ErrorRenderer] intact.
  */
 class ErrorReportingTest {
-
     private val renderer = ErrorRenderer()
 
     @Test
@@ -33,7 +32,7 @@ class ErrorReportingTest {
     fun `an unterminated literal is blamed over the whole attempt`() {
         assertEquals(
             "(1:17)-(1:20) Unterminated string literal.",
-            reportOf("let x: string = \"abc")
+            reportOf("let x: string = \"abc"),
         )
     }
 
@@ -41,7 +40,7 @@ class ErrorReportingTest {
     fun `a missing semicolon is blamed where the tokens ran out`() {
         assertEquals(
             "(1:18)-(1:18) Expected ';' at the end of the statement.",
-            reportOf("let x: number = 42")
+            reportOf("let x: number = 42"),
         )
     }
 
@@ -51,7 +50,7 @@ class ErrorReportingTest {
         // else arrives as an identifier and the parser rejects it as a type
         assertEquals(
             "(1:8)-(1:14) Expected a type.",
-            reportOf("let x: boolean = 42;")
+            reportOf("let x: boolean = 42;"),
         )
     }
 
@@ -59,7 +58,7 @@ class ErrorReportingTest {
     fun `a variable that was never declared is blamed over its name`() {
         assertEquals(
             "(1:9)-(1:15) Variable 'missing' is not declared.",
-            reportOf("println(missing);")
+            reportOf("println(missing);"),
         )
     }
 
@@ -67,7 +66,7 @@ class ErrorReportingTest {
     fun `an operator its operands do not fit is blamed over the whole expression`() {
         assertEquals(
             "(1:9)-(1:15) Cannot apply '-' to string and number.",
-            reportOf("println('a' - 1);")
+            reportOf("println('a' - 1);"),
         )
     }
 
@@ -79,8 +78,7 @@ class ErrorReportingTest {
     /**
      * lexes, parses and runs one statement, and renders the first failure
      */
-    private fun reportOf(source: String): String =
-        renderer.render(errorOf(source))
+    private fun reportOf(source: String): String = renderer.render(errorOf(source))
 
     private fun errorOf(source: String): Diagnostic {
         val tokens = mutableListOf<Token>()
@@ -92,10 +90,11 @@ class ErrorReportingTest {
             }
         }
 
-        val statement = when (val parsed = Parser.parse(tokens)) {
-            is Success -> parsed.value
-            is Failure -> return parsed.error
-        }
+        val statement =
+            when (val parsed = Parser.parse(tokens)) {
+                is Success -> parsed.value
+                is Failure -> return parsed.error
+            }
 
         val interpreter = Interpreter(Environment(), CollectingOutput(), ValueOps())
 

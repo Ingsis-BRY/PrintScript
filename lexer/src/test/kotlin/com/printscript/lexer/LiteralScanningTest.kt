@@ -1,9 +1,9 @@
 package com.printscript.lexer
 
-import com.printscript.report.Diagnostic
-import com.printscript.report.LexicalFault
 import com.printscript.common.Position
 import com.printscript.common.Span
+import com.printscript.report.Diagnostic
+import com.printscript.report.LexicalFault
 import com.printscript.token.Token
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -13,17 +13,16 @@ import kotlin.test.assertEquals
  * report and the positions those errors carry.
  */
 class LiteralScanningTest {
-
     @Test
     fun `a number literal keeps the lexeme as its value`() {
         assertEquals(
             Token.NumberLiteralToken("42", "42", Position(1, 1), Position(1, 2)),
-            singleTokenOf("42")
+            singleTokenOf("42"),
         )
 
         assertEquals(
             Token.NumberLiteralToken("0.25", "0.25", Position(1, 1), Position(1, 4)),
-            singleTokenOf("0.25")
+            singleTokenOf("0.25"),
         )
     }
 
@@ -31,7 +30,7 @@ class LiteralScanningTest {
     fun `a double quoted literal drops its quotes from the value`() {
         assertEquals(
             Token.StringLiteralToken("\"hola\"", "hola", Position(1, 1), Position(1, 6)),
-            singleTokenOf("\"hola\"")
+            singleTokenOf("\"hola\""),
         )
     }
 
@@ -39,7 +38,7 @@ class LiteralScanningTest {
     fun `a single quoted literal works the same way`() {
         assertEquals(
             Token.StringLiteralToken("'hola'", "hola", Position(1, 1), Position(1, 6)),
-            singleTokenOf("'hola'")
+            singleTokenOf("'hola'"),
         )
     }
 
@@ -47,14 +46,17 @@ class LiteralScanningTest {
     fun `an empty literal yields an empty value`() {
         assertEquals(
             Token.StringLiteralToken("\"\"", "", Position(1, 1), Position(1, 2)),
-            singleTokenOf("\"\"")
+            singleTokenOf("\"\""),
         )
     }
 
     @Test
     fun `each quote style carries the other one literally`() {
         assertEquals("it's", (singleTokenOf("\"it's\"") as Token.StringLiteralToken).value)
-        assertEquals("say \"hi\"", (singleTokenOf("'say \"hi\"'") as Token.StringLiteralToken).value)
+        assertEquals(
+            "say \"hi\"",
+            (singleTokenOf("'say \"hi\"'") as Token.StringLiteralToken).value,
+        )
     }
 
     @Test
@@ -66,7 +68,7 @@ class LiteralScanningTest {
     fun `two literals in a row are not merged`() {
         assertEquals(
             listOf("\"a\"", "\"b\""),
-            tokensOf("\"a\" \"b\"").map { it.lexeme }
+            tokensOf("\"a\" \"b\"").map { it.lexeme },
         )
     }
 
@@ -83,9 +85,9 @@ class LiteralScanningTest {
         assertEquals(
             Diagnostic.MalformedLexeme(
                 LexicalFault.UNTERMINATED_STRING,
-                Span(Position(1, 1), Position(1, 4))
+                Span(Position(1, 1), Position(1, 4)),
             ),
-            failureAt(resultsOf("\"abc"), index = 0)
+            failureAt(resultsOf("\"abc"), index = 0),
         )
     }
 
@@ -94,9 +96,9 @@ class LiteralScanningTest {
         assertEquals(
             Diagnostic.MalformedLexeme(
                 LexicalFault.UNTERMINATED_STRING,
-                Span(Position(1, 1), Position(1, 4))
+                Span(Position(1, 1), Position(1, 4)),
             ),
-            failureAt(resultsOf("\"abc\ndef\""), index = 0)
+            failureAt(resultsOf("\"abc\ndef\""), index = 0),
         )
     }
 
@@ -105,9 +107,9 @@ class LiteralScanningTest {
         assertEquals(
             Diagnostic.MalformedLexeme(
                 LexicalFault.UNTERMINATED_STRING,
-                Span(Position(1, 17), Position(1, 20))
+                Span(Position(1, 17), Position(1, 20)),
             ),
-            failureAt(resultsOf("let x: string = \"abc"), index = 5)
+            failureAt(resultsOf("let x: string = \"abc"), index = 5),
         )
     }
 
@@ -116,9 +118,9 @@ class LiteralScanningTest {
         assertEquals(
             Diagnostic.MalformedLexeme(
                 LexicalFault.UNTERMINATED_STRING,
-                Span(Position(3, 3), Position(3, 6))
+                Span(Position(3, 3), Position(3, 6)),
             ),
-            failureAt(resultsOf("let;\n\n  'abc"), index = 2)
+            failureAt(resultsOf("let;\n\n  'abc"), index = 2),
         )
     }
 
@@ -127,9 +129,9 @@ class LiteralScanningTest {
         assertEquals(
             Diagnostic.MalformedLexeme(
                 LexicalFault.UNTERMINATED_STRING,
-                Span(Position(1, 1), Position(1, 4))
+                Span(Position(1, 1), Position(1, 4)),
             ),
-            failureAt(resultsOf("'abc"), index = 0)
+            failureAt(resultsOf("'abc"), index = 0),
         )
     }
 
@@ -138,8 +140,23 @@ class LiteralScanningTest {
         val tokens = tokensOf("let msg: string = \"hola\"; let n: number = 3.5;")
 
         assertEquals(
-            listOf("let", "msg", ":", "string", "=", "\"hola\"", ";", "let", "n", ":", "number", "=", "3.5", ";"),
-            tokens.map { it.lexeme }
+            listOf(
+                "let",
+                "msg",
+                ":",
+                "string",
+                "=",
+                "\"hola\"",
+                ";",
+                "let",
+                "n",
+                ":",
+                "number",
+                "=",
+                "3.5",
+                ";",
+            ),
+            tokens.map { it.lexeme },
         )
     }
 }

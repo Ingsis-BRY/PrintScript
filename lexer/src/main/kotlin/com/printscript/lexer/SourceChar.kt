@@ -9,10 +9,13 @@ package com.printscript.lexer
  * not look like a file that simply ended.
  */
 sealed interface SourceChar {
-
-    data class Character(val value: Char) : SourceChar
+    data class Character(
+        val value: Char,
+    ) : SourceChar
 
     data object EndOfSource : SourceChar
 
-    data class Failed(val message: String) : SourceChar
+    data class Failed(
+        val message: String,
+    ) : SourceChar
 }

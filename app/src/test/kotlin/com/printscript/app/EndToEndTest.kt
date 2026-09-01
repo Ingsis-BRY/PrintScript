@@ -4,9 +4,6 @@ import com.printscript.cli.Cli
 import com.printscript.cli.Operation
 import com.printscript.cli.Program
 import com.printscript.cli.ProgressPrinter
-import com.printscript.report.Failure
-import com.printscript.report.Result
-import com.printscript.report.Success
 import com.printscript.interpreter.CollectingOutput
 import com.printscript.interpreter.Environment
 import com.printscript.interpreter.Interpreter
@@ -19,6 +16,9 @@ import com.printscript.pipeline.StatementParser
 import com.printscript.pipeline.StatementStream
 import com.printscript.pipeline.TokenSource
 import com.printscript.report.ErrorRenderer
+import com.printscript.report.Failure
+import com.printscript.report.Result
+import com.printscript.report.Success
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.test.Test
@@ -29,7 +29,6 @@ import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
 class EndToEndTest {
-
     private fun sourceFile(source: String): Path {
         val file = Files.createTempFile("printscript", ".ps")
         file.toFile().deleteOnExit()
@@ -41,26 +40,27 @@ class EndToEndTest {
     private class Run(
         val output: CollectingOutput = CollectingOutput(),
         val progress: StringBuilder = StringBuilder(),
-        val errors: StringBuilder = StringBuilder()
+        val errors: StringBuilder = StringBuilder(),
     ) {
-        val cli = Cli(
-            newStream = { reader ->
-                val lexer = Lexer(StreamSourceReader(reader), TokenRecognizers.DEFAULT)
+        val cli =
+            Cli(
+                newStream = { reader ->
+                    val lexer = Lexer(StreamSourceReader(reader), TokenRecognizers.DEFAULT)
 
-                StatementStream(
-                    source = TokenSource(lexer::tokens),
-                    parser = StatementParser(Parser::parse)
-                )
-            },
-            newProgram = {
-                val interpreter = Interpreter(Environment(), output, ValueOps())
+                    StatementStream(
+                        source = TokenSource(lexer::tokens),
+                        parser = StatementParser(Parser::parse),
+                    )
+                },
+                newProgram = {
+                    val interpreter = Interpreter(Environment(), output, ValueOps())
 
-                Program(interpreter::execute)
-            },
-            renderer = ErrorRenderer(),
-            progress = ProgressPrinter(progress),
-            errors = errors
-        )
+                    Program(interpreter::execute)
+                },
+                renderer = ErrorRenderer(),
+                progress = ProgressPrinter(progress),
+                errors = errors,
+            )
     }
 
     // runs the source and returns the collected program output, failing the test
@@ -77,41 +77,44 @@ class EndToEndTest {
 
     @Test
     fun `example 1 concatenates strings from file`() {
-        val output = execute(
-            """
-            let name: string = "Joe";
-            let lastName: string = "Doe";
-            println(name + " " + lastName);
-            """.trimIndent()
-        )
+        val output =
+            execute(
+                """
+                let name: string = "Joe";
+                let lastName: string = "Doe";
+                println(name + " " + lastName);
+                """.trimIndent(),
+            )
 
         assertEquals(listOf("Joe Doe"), output)
     }
 
     @Test
     fun `example 2 divides and prints an integer result from file`() {
-        val output = execute(
-            """
-            let a: number = 12;
-            let b: number = 4;
-            let c: number = a / b;
-            println("Result: " + c);
-            """.trimIndent()
-        )
+        val output =
+            execute(
+                """
+                let a: number = 12;
+                let b: number = 4;
+                let c: number = a / b;
+                println("Result: " + c);
+                """.trimIndent(),
+            )
 
         assertEquals(listOf("Result: 3"), output)
     }
 
     @Test
     fun `example 3 reassigns before printing from file`() {
-        val output = execute(
-            """
-            let a: number = 12;
-            let b: number = 4;
-            a = a / b;
-            println("Result: " + a);
-            """.trimIndent()
-        )
+        val output =
+            execute(
+                """
+                let a: number = 12;
+                let b: number = 4;
+                a = a / b;
+                println("Result: " + a);
+                """.trimIndent(),
+            )
 
         assertEquals(listOf("Result: 3"), output)
     }
@@ -120,13 +123,14 @@ class EndToEndTest {
 
     @Test
     fun `prints several lines in source order`() {
-        val output = execute(
-            """
-            println(1);
-            println(2);
-            println(3);
-            """.trimIndent()
-        )
+        val output =
+            execute(
+                """
+                println(1);
+                println(2);
+                println(3);
+                """.trimIndent(),
+            )
 
         assertEquals(listOf("1", "2", "3"), output)
     }
@@ -142,8 +146,8 @@ class EndToEndTest {
                 let x: number = 1;
                 x = 2;
                 println(x);
-                """.trimIndent()
-            )
+                """.trimIndent(),
+            ),
         )
 
         val reported = run.progress.lines().count { it.isNotBlank() }
@@ -156,15 +160,16 @@ class EndToEndTest {
     fun `validation walks a valid program without executing it`() {
         val run = Run()
 
-        val result = run.cli.run(
-            Operation.VALIDATION,
-            sourceFile(
-                """
-                let x: number = 1;
-                println(x);
-                """.trimIndent()
+        val result =
+            run.cli.run(
+                Operation.VALIDATION,
+                sourceFile(
+                    """
+                    let x: number = 1;
+                    println(x);
+                    """.trimIndent(),
+                ),
             )
-        )
 
         assertIs<Success<Unit>>(result)
         assertTrue(run.output.lines().isEmpty())
@@ -186,16 +191,17 @@ class EndToEndTest {
     fun `execution stops at the first error but keeps the output before it`() {
         val run = Run()
 
-        val result = run.cli.run(
-            Operation.EXECUTION,
-            sourceFile(
-                """
-                println(1);
-                let b: number = 2 / 0;
-                println(3);
-                """.trimIndent()
+        val result =
+            run.cli.run(
+                Operation.EXECUTION,
+                sourceFile(
+                    """
+                    println(1);
+                    let b: number = 2 / 0;
+                    println(3);
+                    """.trimIndent(),
+                ),
             )
-        )
 
         assertIs<Failure>(result)
         assertEquals(listOf("1"), run.output.lines())
@@ -258,9 +264,10 @@ class EndToEndTest {
     fun `an unsupported version is rejected before the file is read`() {
         val run = Run()
 
-        val error = assertFailsWith<IllegalArgumentException> {
-            run.cli.run(Operation.EXECUTION, sourceFile("println(1);"), version = "9.9")
-        }
+        val error =
+            assertFailsWith<IllegalArgumentException> {
+                run.cli.run(Operation.EXECUTION, sourceFile("println(1);"), version = "9.9")
+            }
 
         assertContains(error.message.orEmpty(), "Unsupported version")
         assertTrue(run.output.lines().isEmpty())

@@ -14,7 +14,7 @@ import java.nio.file.Path
 */
 enum class Operation {
     VALIDATION,
-    EXECUTION
+    EXECUTION,
 }
 
 /**
@@ -30,15 +30,18 @@ class Cli(
     private val newProgram: () -> Program,
     private val renderer: ErrorRenderer,
     private val progress: ProgressPrinter,
-    private val errors: Appendable
+    private val errors: Appendable,
 ) {
-
     /**
-    * runs [operation] over [file], stopping at the first error.
-    * [version] is optional; an unsupported one is rejected before the file is
-    * read, since it is a misuse of the CLI rather than a fault in the source.
-    */
-    fun run(operation: Operation, file: Path, version: String? = null): Result<Unit> {
+     * runs [operation] over [file], stopping at the first error.
+     * [version] is optional; an unsupported one is rejected before the file is
+     * read, since it is a misuse of the CLI rather than a fault in the source.
+     */
+    fun run(
+        operation: Operation,
+        file: Path,
+        version: String? = null,
+    ): Result<Unit> {
         requireSupported(version)
 
         return Files.newBufferedReader(file).use { reader ->
@@ -52,8 +55,8 @@ class Cli(
     }
 
     /**
-    * walks the stream parsing every statement, without running any of them
-    */
+     * walks the stream parsing every statement, without running any of them
+     */
     private fun validate(stream: StatementStream): Result<Unit> {
         while (stream.hasNext()) {
             when (val parsed = stream.next()) {
@@ -66,8 +69,8 @@ class Cli(
     }
 
     /**
-    * runs each statement as it comes out of the stream
-    */
+     * runs each statement as it comes out of the stream
+     */
     private fun execute(stream: StatementStream): Result<Unit> {
         val program = newProgram()
 
@@ -90,8 +93,8 @@ class Cli(
     }
 
     /**
-    * rejects a version the CLI does not support; a missing one takes the default
-    */
+     * rejects a version the CLI does not support; a missing one takes the default
+     */
     private fun requireSupported(version: String?) {
         require(version == null || version == SUPPORTED_VERSION) {
             "Unsupported version: $version"
@@ -99,8 +102,8 @@ class Cli(
     }
 
     /**
-    * shows the error and hands it back, so the caller stops on it
-    */
+     * shows the error and hands it back, so the caller stops on it
+     */
     private fun report(failure: Failure): Failure {
         errors.appendLine(renderer.render(failure.error))
         return failure

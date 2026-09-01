@@ -23,7 +23,6 @@ import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
 class CliTest {
-
     private val at = Position(1, 1)
 
     private val divisionByZero = Diagnostic.DivisionByZero(Span.at(at))
@@ -42,18 +41,18 @@ class CliTest {
         val pending = ArrayDeque(results)
 
         return StatementStream(
-            source = TokenSource {
-                results.asSequence().map { Success(Token.SemicolonToken(";", at, at)) }
-            },
-            parser = StatementParser { pending.removeFirst() }
+            source =
+                TokenSource {
+                    results.asSequence().map { Success(Token.SemicolonToken(";", at, at)) }
+                },
+            parser = StatementParser { pending.removeFirst() },
         )
     }
 
     private class RecordingProgram(
         private val failAt: Int?,
-        private val error: Diagnostic
+        private val error: Diagnostic,
     ) : Program {
-
         val executed = mutableListOf<Statement>()
 
         override fun execute(statement: Statement): Result<Unit> {
@@ -65,19 +64,20 @@ class CliTest {
 
     private inner class Run(
         results: List<Result<Statement>>,
-        failAt: Int? = null
+        failAt: Int? = null,
     ) {
         val progress = StringBuilder()
         val errors = StringBuilder()
         val program = RecordingProgram(failAt, divisionByZero)
 
-        val cli = Cli(
-            newStream = { streamOf(results) },
-            newProgram = { program },
-            renderer = ErrorRenderer(),
-            progress = ProgressPrinter(progress),
-            errors = errors
-        )
+        val cli =
+            Cli(
+                newStream = { streamOf(results) },
+                newProgram = { program },
+                renderer = ErrorRenderer(),
+                progress = ProgressPrinter(progress),
+                errors = errors,
+            )
     }
 
     private fun succeeding(count: Int): List<Result<Statement>> =
@@ -158,9 +158,10 @@ class CliTest {
     fun `an unsupported version is rejected before the file is read`() {
         val run = Run(succeeding(1))
 
-        val error = assertFailsWith<IllegalArgumentException> {
-            run.cli.run(Operation.EXECUTION, anyFile(), version = "9.9")
-        }
+        val error =
+            assertFailsWith<IllegalArgumentException> {
+                run.cli.run(Operation.EXECUTION, anyFile(), version = "9.9")
+            }
 
         assertContains(error.message.orEmpty(), "Unsupported version")
         assertTrue(run.program.executed.isEmpty())

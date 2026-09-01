@@ -10,7 +10,6 @@ import kotlin.test.assertNotEquals
 import kotlin.test.assertTrue
 
 class ErrorRendererTest {
-
     private val renderer = ErrorRenderer()
 
     private val span = Span(Position(2, 9), Position(2, 14))
@@ -35,9 +34,10 @@ class ErrorRendererTest {
 
     @Test
     fun `a multi line error keeps both lines`() {
-        val rendered = renderer.render(
-            Diagnostic.DivisionByZero(Span(Position(4, 20), Position(6, 2)))
-        )
+        val rendered =
+            renderer.render(
+                Diagnostic.DivisionByZero(Span(Position(4, 20), Position(6, 2))),
+            )
 
         assertEquals("(4:20)-(6:2) Division by zero.", rendered)
     }
@@ -48,7 +48,7 @@ class ErrorRendererTest {
     fun `renders an unexpected character`() {
         assertEquals(
             "(1:3)-(1:3) Unexpected character '@'.",
-            renderer.render(Diagnostic.UnexpectedCharacter('@', oneCharacter))
+            renderer.render(Diagnostic.UnexpectedCharacter('@', oneCharacter)),
         )
     }
 
@@ -57,8 +57,8 @@ class ErrorRendererTest {
         assertEquals(
             "(2:9)-(2:14) Unterminated string literal.",
             renderer.render(
-                Diagnostic.MalformedLexeme(LexicalFault.UNTERMINATED_STRING, span)
-            )
+                Diagnostic.MalformedLexeme(LexicalFault.UNTERMINATED_STRING, span),
+            ),
         )
     }
 
@@ -66,7 +66,7 @@ class ErrorRendererTest {
     fun `renders a source that could not be read`() {
         assertEquals(
             "(1:3)-(1:3) Could not read source: disk went away.",
-            renderer.render(Diagnostic.SourceUnreadable("disk went away", oneCharacter))
+            renderer.render(Diagnostic.SourceUnreadable("disk went away", oneCharacter)),
         )
     }
 
@@ -74,24 +74,25 @@ class ErrorRendererTest {
 
     @Test
     fun `renders every symbol the parser can demand`() {
-        val expected = mapOf(
-            SyntaxSymbol.LET to "Expected 'let'.",
-            SyntaxSymbol.IDENTIFIER to "Expected an identifier.",
-            SyntaxSymbol.COLON to "Expected ':'.",
-            SyntaxSymbol.TYPE_NAME to "Expected a type.",
-            SyntaxSymbol.ASSIGN to "Expected '='.",
-            SyntaxSymbol.SEMICOLON to "Expected ';' at the end of the statement.",
-            SyntaxSymbol.LEFT_PAREN to "Expected '('.",
-            SyntaxSymbol.RIGHT_PAREN to "Expected ')'.",
-            SyntaxSymbol.PRINTLN to "Expected 'println'."
-        )
+        val expected =
+            mapOf(
+                SyntaxSymbol.LET to "Expected 'let'.",
+                SyntaxSymbol.IDENTIFIER to "Expected an identifier.",
+                SyntaxSymbol.COLON to "Expected ':'.",
+                SyntaxSymbol.TYPE_NAME to "Expected a type.",
+                SyntaxSymbol.ASSIGN to "Expected '='.",
+                SyntaxSymbol.SEMICOLON to "Expected ';' at the end of the statement.",
+                SyntaxSymbol.LEFT_PAREN to "Expected '('.",
+                SyntaxSymbol.RIGHT_PAREN to "Expected ')'.",
+                SyntaxSymbol.PRINTLN to "Expected 'println'.",
+            )
 
         assertEquals(SyntaxSymbol.entries.toSet(), expected.keys)
 
         for ((symbol, message) in expected) {
             assertEquals(
                 "(1:3)-(1:3) $message",
-                renderer.render(Diagnostic.ExpectedSymbol(symbol, oneCharacter))
+                renderer.render(Diagnostic.ExpectedSymbol(symbol, oneCharacter)),
             )
         }
     }
@@ -100,7 +101,7 @@ class ErrorRendererTest {
     fun `renders an unexpected token`() {
         assertEquals(
             "(1:3)-(1:3) Unexpected token '+'.",
-            renderer.render(Diagnostic.UnexpectedToken("+", oneCharacter))
+            renderer.render(Diagnostic.UnexpectedToken("+", oneCharacter)),
         )
     }
 
@@ -109,14 +110,14 @@ class ErrorRendererTest {
         assertEquals(
             "(1:3)-(1:3) Unexpected end of expression.",
             renderer.render(
-                Diagnostic.UnexpectedEndOfInput(SyntacticUnit.EXPRESSION, oneCharacter)
-            )
+                Diagnostic.UnexpectedEndOfInput(SyntacticUnit.EXPRESSION, oneCharacter),
+            ),
         )
         assertEquals(
             "(1:3)-(1:3) Unexpected end of statement.",
             renderer.render(
-                Diagnostic.UnexpectedEndOfInput(SyntacticUnit.STATEMENT, oneCharacter)
-            )
+                Diagnostic.UnexpectedEndOfInput(SyntacticUnit.STATEMENT, oneCharacter),
+            ),
         )
     }
 
@@ -124,7 +125,7 @@ class ErrorRendererTest {
     fun `renders an unknown type`() {
         assertEquals(
             "(2:9)-(2:14) Unknown type 'boolean'.",
-            renderer.render(Diagnostic.UnknownType("boolean", span))
+            renderer.render(Diagnostic.UnknownType("boolean", span)),
         )
     }
 
@@ -132,7 +133,7 @@ class ErrorRendererTest {
     fun `renders a malformed number`() {
         assertEquals(
             "(2:9)-(2:14) Malformed number '1.2.3'.",
-            renderer.render(Diagnostic.MalformedNumber("1.2.3", span))
+            renderer.render(Diagnostic.MalformedNumber("1.2.3", span)),
         )
     }
 
@@ -142,7 +143,7 @@ class ErrorRendererTest {
     fun `renders a variable declared twice`() {
         assertEquals(
             "(2:9)-(2:14) Variable 'x' is already declared.",
-            renderer.render(Diagnostic.VariableAlreadyDeclared("x", span))
+            renderer.render(Diagnostic.VariableAlreadyDeclared("x", span)),
         )
     }
 
@@ -150,7 +151,7 @@ class ErrorRendererTest {
     fun `renders a variable that was never declared`() {
         assertEquals(
             "(2:9)-(2:14) Variable 'x' is not declared.",
-            renderer.render(Diagnostic.VariableNotDeclared("x", span))
+            renderer.render(Diagnostic.VariableNotDeclared("x", span)),
         )
     }
 
@@ -158,7 +159,7 @@ class ErrorRendererTest {
     fun `renders a variable read before it holds a value`() {
         assertEquals(
             "(2:9)-(2:14) Variable 'x' is used before it has a value.",
-            renderer.render(Diagnostic.VariableWithoutValue("x", span))
+            renderer.render(Diagnostic.VariableWithoutValue("x", span)),
         )
     }
 
@@ -166,7 +167,7 @@ class ErrorRendererTest {
     fun `a variable that was never declared reads differently from one without a value`() {
         assertNotEquals(
             renderer.render(Diagnostic.VariableNotDeclared("x", span)),
-            renderer.render(Diagnostic.VariableWithoutValue("x", span))
+            renderer.render(Diagnostic.VariableWithoutValue("x", span)),
         )
     }
 
@@ -179,9 +180,9 @@ class ErrorRendererTest {
                     name = "x",
                     declared = Type.NumberType,
                     actual = Type.StringType,
-                    span = span
-                )
-            )
+                    span = span,
+                ),
+            ),
         )
     }
 
@@ -194,30 +195,32 @@ class ErrorRendererTest {
                     operator = BinaryOperator.Subtraction,
                     left = Type.StringType,
                     right = Type.NumberType,
-                    span = span
-                )
-            )
+                    span = span,
+                ),
+            ),
         )
     }
 
     @Test
     fun `renders every operator by the symbol it is written with`() {
-        val symbols = mapOf(
-            BinaryOperator.Addition to "+",
-            BinaryOperator.Subtraction to "-",
-            BinaryOperator.Multiplication to "*",
-            BinaryOperator.Division to "/"
-        )
+        val symbols =
+            mapOf(
+                BinaryOperator.Addition to "+",
+                BinaryOperator.Subtraction to "-",
+                BinaryOperator.Multiplication to "*",
+                BinaryOperator.Division to "/",
+            )
 
         for ((operator, symbol) in symbols) {
-            val rendered = renderer.render(
-                Diagnostic.IncompatibleOperands(
-                    operator = operator,
-                    left = Type.StringType,
-                    right = Type.StringType,
-                    span = span
+            val rendered =
+                renderer.render(
+                    Diagnostic.IncompatibleOperands(
+                        operator = operator,
+                        left = Type.StringType,
+                        right = Type.StringType,
+                        span = span,
+                    ),
                 )
-            )
 
             assertTrue(rendered.contains("'$symbol'"), rendered)
         }
@@ -227,7 +230,7 @@ class ErrorRendererTest {
     fun `renders a call to a function that does not exist`() {
         assertEquals(
             "(2:9)-(2:14) Unknown function 'print'.",
-            renderer.render(Diagnostic.UnknownFunction("print", span))
+            renderer.render(Diagnostic.UnknownFunction("print", span)),
         )
     }
 
@@ -235,7 +238,7 @@ class ErrorRendererTest {
     fun `renders a division by zero`() {
         assertEquals(
             "(2:9)-(2:14) Division by zero.",
-            renderer.render(Diagnostic.DivisionByZero(span))
+            renderer.render(Diagnostic.DivisionByZero(span)),
         )
     }
 }

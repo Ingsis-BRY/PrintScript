@@ -7,7 +7,6 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class PrecedenceTableTest {
-
     private val start = Position(1, 1)
     private val end = Position(1, 2)
 
@@ -46,7 +45,7 @@ class PrecedenceTableTest {
 
         assertTrue(
             PrecedenceTable.precedenceOf(star) >
-                    PrecedenceTable.precedenceOf(plus)
+                PrecedenceTable.precedenceOf(plus),
         )
     }
 

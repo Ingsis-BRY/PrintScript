@@ -3,14 +3,14 @@ package com.printscript.pipeline
 import com.printscript.ast.Expression
 import com.printscript.ast.Statement
 import com.printscript.ast.Type
-import com.printscript.report.Diagnostic
-import com.printscript.report.Failure
-import com.printscript.report.Success
-import com.printscript.report.SyntaxSymbol
 import com.printscript.lexer.Lexer
 import com.printscript.lexer.StringSourceReader
 import com.printscript.lexer.recognizer.TokenRecognizers
 import com.printscript.parser.Parser
+import com.printscript.report.Diagnostic
+import com.printscript.report.Failure
+import com.printscript.report.Success
+import com.printscript.report.SyntaxSymbol
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -18,13 +18,12 @@ import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
 class StatementStreamTest {
-
     private fun streamOf(source: String): StatementStream {
         val lexer = Lexer(StringSourceReader(source), TokenRecognizers.DEFAULT)
 
         return StatementStream(
             source = TokenSource(lexer::tokens),
-            parser = StatementParser(Parser::parse)
+            parser = StatementParser(Parser::parse),
         )
     }
 
@@ -53,13 +52,14 @@ class StatementStreamTest {
 
     @Test
     fun `recognizes the three kinds of statement in one source`() {
-        val statements = statementsOf(
-            """
-            let x: number = 5;
-            x = 6;
-            println(x);
-            """.trimIndent()
-        )
+        val statements =
+            statementsOf(
+                """
+                let x: number = 5;
+                x = 6;
+                println(x);
+                """.trimIndent(),
+            )
 
         assertEquals(3, statements.size)
         assertIs<Statement.VariableDeclaration>(statements[0])
@@ -83,9 +83,10 @@ class StatementStreamTest {
 
     @Test
     fun `keeps a declaration's name, type and initializer`() {
-        val declaration = assertIs<Statement.VariableDeclaration>(
-            statementsOf("let total: number = 1 + 2;").single()
-        )
+        val declaration =
+            assertIs<Statement.VariableDeclaration>(
+                statementsOf("let total: number = 1 + 2;").single(),
+            )
 
         assertEquals("total", declaration.name)
         assertEquals(Type.NumberType, declaration.declaredType)
@@ -102,12 +103,13 @@ class StatementStreamTest {
 
     @Test
     fun `keeps each statement's start position across lines`() {
-        val statements = statementsOf(
-            """
-            let x: number = 1;
-            println(x);
-            """.trimIndent()
-        )
+        val statements =
+            statementsOf(
+                """
+                let x: number = 1;
+                println(x);
+                """.trimIndent(),
+            )
 
         assertEquals(1, statements[0].start.line)
         assertEquals(2, statements[1].start.line)

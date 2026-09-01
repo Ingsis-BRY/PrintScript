@@ -1,13 +1,13 @@
 package com.printscript.lexer
 
-import com.printscript.report.Diagnostic
-import com.printscript.report.Failure
 import com.printscript.common.Position
-import com.printscript.report.Result
 import com.printscript.common.Span
-import com.printscript.report.Success
 import com.printscript.lexer.recognizer.RecognizerState
 import com.printscript.lexer.recognizer.TokenRecognizer
+import com.printscript.report.Diagnostic
+import com.printscript.report.Failure
+import com.printscript.report.Result
+import com.printscript.report.Success
 import com.printscript.token.Token
 
 /**
@@ -24,9 +24,8 @@ import com.printscript.token.Token
  */
 class Lexer(
     private val reader: SourceReader,
-    private val recognizers: List<TokenRecognizer>
+    private val recognizers: List<TokenRecognizer>,
 ) {
-
     private val pending: ArrayDeque<PositionedChar> = ArrayDeque()
 
     private var unreadFailure: Diagnostic? = null
@@ -39,17 +38,18 @@ class Lexer(
      *
      * the sequence is single-use, since it consumes the underlying reader
      */
-    fun tokens(): Sequence<Result<Token>> = sequence {
-        while (true) {
-            val token = nextToken() ?: break
+    fun tokens(): Sequence<Result<Token>> =
+        sequence {
+            while (true) {
+                val token = nextToken() ?: break
 
-            yield(token)
+                yield(token)
 
-            if (token is Failure) {
-                break
+                if (token is Failure) {
+                    break
+                }
             }
         }
-    }
 
     /**
      * scans one token, or returns null once the source holds nothing but whitespace
@@ -57,8 +57,9 @@ class Lexer(
     private fun nextToken(): Result<Token>? {
         skipWhitespace()
 
-        val start = peekChar()?.position
-            ?: return takeSourceFailure()
+        val start =
+            peekChar()?.position
+                ?: return takeSourceFailure()
 
         return scanToken(start)
     }
@@ -81,7 +82,13 @@ class Lexer(
 
             val currentLexeme = lexeme.toString()
 
-            val states = alive.map { recognizer -> recognizer to recognizer.recognize(currentLexeme) }
+            val states =
+                alive.map { recognizer ->
+                    recognizer to
+                        recognizer.recognize(
+                            currentLexeme,
+                        )
+                }
 
             val accepted = states.firstOrNull { (_, state) -> state == RecognizerState.Accepted }
 
@@ -89,9 +96,10 @@ class Lexer(
                 best = Match(accepted.first, currentLexeme, current.position)
             }
 
-            alive = states
-                .filter { (_, state) -> state != RecognizerState.Rejected }
-                .map { (recognizer, _) -> recognizer }
+            alive =
+                states
+                    .filter { (_, state) -> state != RecognizerState.Rejected }
+                    .map { (recognizer, _) -> recognizer }
 
             if (alive.isEmpty()) {
                 break
@@ -122,25 +130,26 @@ class Lexer(
     private fun malformedToken(
         lexeme: String,
         consumed: List<PositionedChar>,
-        start: Position
+        start: Position,
     ): Failure {
         takeSourceFailure()?.let { return it }
 
         pushBack(consumed.drop(1))
 
-        val fault = recognizers.firstNotNullOfOrNull { it.diagnose(lexeme) }
-            ?: return Failure(
-                Diagnostic.UnexpectedCharacter(
-                    character = consumed.first().value,
-                    span = Span.at(start)
+        val fault =
+            recognizers.firstNotNullOfOrNull { it.diagnose(lexeme) }
+                ?: return Failure(
+                    Diagnostic.UnexpectedCharacter(
+                        character = consumed.first().value,
+                        span = Span.at(start),
+                    ),
                 )
-            )
 
         return Failure(
             Diagnostic.MalformedLexeme(
                 fault = fault,
-                span = Span(start, lastCharacterOf(consumed))
-            )
+                span = Span(start, lastCharacterOf(consumed)),
+            ),
         )
     }
 
@@ -195,10 +204,11 @@ class Lexer(
             }
 
             is SourceChar.Failed -> {
-                unreadFailure = Diagnostic.SourceUnreadable(
-                    detail = sourceChar.message,
-                    span = Span.at(Position(line, column))
-                )
+                unreadFailure =
+                    Diagnostic.SourceUnreadable(
+                        detail = sourceChar.message,
+                        span = Span.at(Position(line, column)),
+                    )
                 null
             }
 
@@ -245,7 +255,7 @@ class Lexer(
      */
     private data class PositionedChar(
         val value: Char,
-        val position: Position
+        val position: Position,
     )
 
     /**
@@ -254,6 +264,6 @@ class Lexer(
     private data class Match(
         val recognizer: TokenRecognizer,
         val lexeme: String,
-        val end: Position
+        val end: Position,
     )
 }

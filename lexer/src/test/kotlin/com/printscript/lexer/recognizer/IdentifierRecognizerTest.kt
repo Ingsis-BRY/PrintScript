@@ -6,7 +6,6 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class IdentifierRecognizerTest {
-
     @Test
     fun `is pending on the empty lexeme`() {
         assertEquals(RecognizerState.Pending, IdentifierRecognizer.recognize(""))
@@ -67,7 +66,7 @@ class IdentifierRecognizerTest {
 
         assertEquals(
             Token.IdentifierToken("counter", Position(3, 5), Position(3, 11)),
-            token
+            token,
         )
     }
 }

@@ -9,7 +9,6 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class FixedLexemeRecognizerTest {
-
     @Test
     fun `accepts the exact lexeme`() {
         val recognizer = FixedLexemeRecognizer(";", ::SemicolonToken)
@@ -64,7 +63,7 @@ class FixedLexemeRecognizerTest {
 
         assertEquals(
             Token.LeftParenToken("(", Position(2, 7), Position(2, 7)),
-            token
+            token,
         )
     }
 }

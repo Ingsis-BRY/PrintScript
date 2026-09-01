@@ -9,16 +9,16 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class TokenCursorTest {
-
     private val start = Position(1, 1)
     private val end = Position(1, 2)
 
-    private val tokens = listOf(
-        Token.IdentifierToken("x", start, end),
-        Token.AssignToken("=", start, end),
-        Token.NumberLiteralToken("42", "42", start, end),
-        Token.SemicolonToken(";", start, end)
-    )
+    private val tokens =
+        listOf(
+            Token.IdentifierToken("x", start, end),
+            Token.AssignToken("=", start, end),
+            Token.NumberLiteralToken("42", "42", start, end),
+            Token.SemicolonToken(";", start, end),
+        )
 
     @Test
     fun `hasNext should be true while tokens remain`() {

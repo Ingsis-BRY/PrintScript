@@ -17,7 +17,6 @@ import com.printscript.common.Span
  * breaks that file at compile time instead of slipping through unhandled.
  */
 sealed interface Diagnostic {
-
     val span: Span
 
     // Lexical
@@ -27,7 +26,7 @@ sealed interface Diagnostic {
      */
     data class UnexpectedCharacter(
         val character: Char,
-        override val span: Span
+        override val span: Span,
     ) : Diagnostic
 
     /**
@@ -35,7 +34,7 @@ sealed interface Diagnostic {
      */
     data class MalformedLexeme(
         val fault: LexicalFault,
-        override val span: Span
+        override val span: Span,
     ) : Diagnostic
 
     /**
@@ -44,7 +43,7 @@ sealed interface Diagnostic {
      */
     data class SourceUnreadable(
         val detail: String,
-        override val span: Span
+        override val span: Span,
     ) : Diagnostic
 
     // Syntactic
@@ -54,7 +53,7 @@ sealed interface Diagnostic {
      */
     data class ExpectedSymbol(
         val expected: SyntaxSymbol,
-        override val span: Span
+        override val span: Span,
     ) : Diagnostic
 
     /**
@@ -62,7 +61,7 @@ sealed interface Diagnostic {
      */
     data class UnexpectedToken(
         val lexeme: String,
-        override val span: Span
+        override val span: Span,
     ) : Diagnostic
 
     /**
@@ -70,7 +69,7 @@ sealed interface Diagnostic {
      */
     data class UnexpectedEndOfInput(
         val unit: SyntacticUnit,
-        override val span: Span
+        override val span: Span,
     ) : Diagnostic
 
     /**
@@ -78,7 +77,7 @@ sealed interface Diagnostic {
      */
     data class UnknownType(
         val name: String,
-        override val span: Span
+        override val span: Span,
     ) : Diagnostic
 
     /**
@@ -86,19 +85,19 @@ sealed interface Diagnostic {
      */
     data class MalformedNumber(
         val text: String,
-        override val span: Span
+        override val span: Span,
     ) : Diagnostic
 
     // Semantic
 
     data class VariableAlreadyDeclared(
         val name: String,
-        override val span: Span
+        override val span: Span,
     ) : Diagnostic
 
     data class VariableNotDeclared(
         val name: String,
-        override val span: Span
+        override val span: Span,
     ) : Diagnostic
 
     /**
@@ -106,30 +105,30 @@ sealed interface Diagnostic {
      */
     data class VariableWithoutValue(
         val name: String,
-        override val span: Span
+        override val span: Span,
     ) : Diagnostic
 
     data class IncompatibleAssignment(
         val name: String,
         val declared: Type,
         val actual: Type,
-        override val span: Span
+        override val span: Span,
     ) : Diagnostic
 
     data class IncompatibleOperands(
         val operator: BinaryOperator,
         val left: Type,
         val right: Type,
-        override val span: Span
+        override val span: Span,
     ) : Diagnostic
 
     data class UnknownFunction(
         val name: String,
-        override val span: Span
+        override val span: Span,
     ) : Diagnostic
 
     data class DivisionByZero(
-        override val span: Span
+        override val span: Span,
     ) : Diagnostic
 }
 
@@ -139,7 +138,7 @@ sealed interface Diagnostic {
  * A recognizer names the problem, it does not word it: the renderer does.
  */
 enum class LexicalFault {
-    UNTERMINATED_STRING
+    UNTERMINATED_STRING,
 }
 
 /**
@@ -154,7 +153,7 @@ enum class SyntaxSymbol {
     SEMICOLON,
     LEFT_PAREN,
     RIGHT_PAREN,
-    PRINTLN
+    PRINTLN,
 }
 
 /**
@@ -162,5 +161,5 @@ enum class SyntaxSymbol {
  */
 enum class SyntacticUnit {
     EXPRESSION,
-    STATEMENT
+    STATEMENT,
 }
