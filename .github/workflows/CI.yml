@@ -6,7 +6,8 @@ on:
 
   workflow_dispatch:
 
-permissions: read
+permissions: 
+  contents: read
 
 jobs:
   build:
