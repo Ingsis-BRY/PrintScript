@@ -14,20 +14,15 @@ import java.io.Reader
  * ends the stream.
  */
 class StreamSourceReader(
-    private val reader: Reader
+    private val reader: Reader,
 ) : SourceReader {
-
     private var exhausted: Boolean = false
     private var current: SourceChar = readChar()
     private var lookahead: SourceChar = readChar()
 
-    override fun peek(): SourceChar {
-        return current
-    }
+    override fun peek(): SourceChar = current
 
-    override fun peekNext(): SourceChar {
-        return lookahead
-    }
+    override fun peekNext(): SourceChar = lookahead
 
     override fun next(): SourceChar {
         if (!hasNext()) {
@@ -45,9 +40,7 @@ class StreamSourceReader(
     /**
      * a pending [SourceChar.Failed] still counts as something to hand over
      */
-    override fun hasNext(): Boolean {
-        return current !is SourceChar.EndOfSource
-    }
+    override fun hasNext(): Boolean = current !is SourceChar.EndOfSource
 
     /**
      * reads a single character, returning end of source once the stream runs out
@@ -58,12 +51,13 @@ class StreamSourceReader(
             return SourceChar.EndOfSource
         }
 
-        val code = try {
-            reader.read()
-        } catch (error: IOException) {
-            exhausted = true
-            return SourceChar.Failed(error.message ?: "I/O error")
-        }
+        val code =
+            try {
+                reader.read()
+            } catch (error: IOException) {
+                exhausted = true
+                return SourceChar.Failed(error.message ?: "I/O error")
+            }
 
         if (code < 0) {
             exhausted = true

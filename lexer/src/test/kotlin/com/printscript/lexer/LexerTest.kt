@@ -1,11 +1,11 @@
 package com.printscript.lexer
 
+import com.printscript.common.Position
+import com.printscript.common.Span
 import com.printscript.lexer.recognizer.TokenRecognizers
 import com.printscript.report.Diagnostic
 import com.printscript.report.Failure
-import com.printscript.common.Position
 import com.printscript.report.Result
-import com.printscript.common.Span
 import com.printscript.report.Success
 import com.printscript.token.Token
 import java.io.IOException
@@ -16,7 +16,6 @@ import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
 class LexerTest {
-
     @Test
     fun `empty source yields no tokens`() {
         assertEquals(emptyList(), tokensOf(""))
@@ -29,23 +28,24 @@ class LexerTest {
 
     @Test
     fun `every fixed literal is recognized on its own`() {
-        val expected = mapOf<String, (Position, Position) -> Token>(
-            ":" to { start, end -> Token.ColonToken(":", start, end) },
-            "=" to { start, end -> Token.AssignToken("=", start, end) },
-            ";" to { start, end -> Token.SemicolonToken(";", start, end) },
-            "+" to { start, end -> Token.PlusToken("+", start, end) },
-            "-" to { start, end -> Token.MinusToken("-", start, end) },
-            "*" to { start, end -> Token.StarToken("*", start, end) },
-            "/" to { start, end -> Token.SlashToken("/", start, end) },
-            "(" to { start, end -> Token.LeftParenToken("(", start, end) },
-            ")" to { start, end -> Token.RightParenToken(")", start, end) }
-        )
+        val expected =
+            mapOf<String, (Position, Position) -> Token>(
+                ":" to { start, end -> Token.ColonToken(":", start, end) },
+                "=" to { start, end -> Token.AssignToken("=", start, end) },
+                ";" to { start, end -> Token.SemicolonToken(";", start, end) },
+                "+" to { start, end -> Token.PlusToken("+", start, end) },
+                "-" to { start, end -> Token.MinusToken("-", start, end) },
+                "*" to { start, end -> Token.StarToken("*", start, end) },
+                "/" to { start, end -> Token.SlashToken("/", start, end) },
+                "(" to { start, end -> Token.LeftParenToken("(", start, end) },
+                ")" to { start, end -> Token.RightParenToken(")", start, end) },
+            )
 
         for ((lexeme, build) in expected) {
             assertEquals(
                 listOf(build(Position(1, 1), Position(1, 1))),
                 tokensOf(lexeme),
-                "failed on \"$lexeme\""
+                "failed on \"$lexeme\"",
             )
         }
     }
@@ -105,7 +105,7 @@ class LexerTest {
 
         assertEquals(
             Diagnostic.UnexpectedCharacter('@', Span.at(Position(1, 3))),
-            failureAt(results, index = 1)
+            failureAt(results, index = 1),
         )
     }
 
@@ -115,7 +115,7 @@ class LexerTest {
 
         assertEquals(
             Diagnostic.UnexpectedCharacter('#', Span.at(Position(3, 3))),
-            failureAt(results, index = 2)
+            failureAt(results, index = 2),
         )
     }
 
@@ -152,7 +152,7 @@ class LexerTest {
 
         assertEquals(
             Diagnostic.UnexpectedCharacter('@', Span.at(Position(1, 9))),
-            failureAt(results, index = 1)
+            failureAt(results, index = 1),
         )
     }
 
@@ -184,7 +184,7 @@ class LexerTest {
 
         assertEquals(
             Diagnostic.SourceUnreadable("disk went away", Span.at(Position(1, 3))),
-            failureAt(results, index = 2)
+            failureAt(results, index = 2),
         )
     }
 
@@ -194,7 +194,7 @@ class LexerTest {
 
         assertEquals(
             Diagnostic.SourceUnreadable("disk went away", Span.at(Position(1, 1))),
-            failureAt(results, index = 0)
+            failureAt(results, index = 0),
         )
         assertEquals(1, results.size)
     }
@@ -218,7 +218,7 @@ class LexerTest {
 
         assertEquals(
             Diagnostic.SourceUnreadable("disk went away", Span.at(Position(1, 3))),
-            failureAt(results, index = 1)
+            failureAt(results, index = 1),
         )
 
         assertEquals(2, results.size)
@@ -231,12 +231,15 @@ class LexerTest {
      * yields the whole source and then throws instead of signalling a clean end
      */
     private class BreakingReader(
-        private val source: String
+        private val source: String,
     ) : Reader() {
-
         private var index: Int = 0
 
-        override fun read(buffer: CharArray, offset: Int, length: Int): Int {
+        override fun read(
+            buffer: CharArray,
+            offset: Int,
+            length: Int,
+        ): Int {
             if (length == 0) {
                 return 0
             }

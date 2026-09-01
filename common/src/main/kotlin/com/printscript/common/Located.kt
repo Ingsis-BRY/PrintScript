@@ -8,7 +8,6 @@ package com.printscript.common
  * error, so no producer has to assemble one by hand.
  */
 interface Located {
-
     val start: Position
 
     val end: Position

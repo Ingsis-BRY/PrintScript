@@ -7,7 +7,6 @@ package com.printscript.lexer.recognizer
  * keeps feeding it characters; only [Rejected] takes a recognizer out of the run.
  */
 sealed interface RecognizerState {
-
     /**
      * the lexeme is a complete token, though a longer one may still match
      */

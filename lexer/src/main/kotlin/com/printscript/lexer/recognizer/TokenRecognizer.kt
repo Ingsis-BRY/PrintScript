@@ -1,7 +1,7 @@
 package com.printscript.lexer.recognizer
 
-import com.printscript.report.LexicalFault
 import com.printscript.common.Position
+import com.printscript.report.LexicalFault
 import com.printscript.token.Token
 
 /**
@@ -15,7 +15,6 @@ import com.printscript.token.Token
  * Adding a token type means adding a recognizer, never editing an existing one.
  */
 interface TokenRecognizer {
-
     /**
      * walks [lexeme] through the automaton and reports where it ended up
      */
@@ -27,7 +26,11 @@ interface TokenRecognizer {
      * [start] and [end] are the positions of the first and last character of
      * [lexeme], both inclusive
      */
-    fun tokenOf(lexeme: String, start: Position, end: Position): Token
+    fun tokenOf(
+        lexeme: String,
+        start: Position,
+        end: Position,
+    ): Token
 
     /**
      * names why [lexeme] is a broken attempt at this kind of token.

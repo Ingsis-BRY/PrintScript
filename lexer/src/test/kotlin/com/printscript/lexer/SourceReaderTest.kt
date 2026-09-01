@@ -7,7 +7,6 @@ import kotlin.test.assertTrue
 import kotlin.test.fail
 
 abstract class SourceReaderTest {
-
     abstract fun readerOf(source: String): SourceReader
 
     @Test
@@ -113,9 +112,7 @@ abstract class SourceReaderTest {
         }
     }
 
-    private fun char(value: Char): SourceChar {
-        return SourceChar.Character(value)
-    }
+    private fun char(value: Char): SourceChar = SourceChar.Character(value)
 
     private fun consumeAll(reader: SourceReader): String {
         val consumed = StringBuilder()

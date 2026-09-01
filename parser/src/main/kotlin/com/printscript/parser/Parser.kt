@@ -4,26 +4,25 @@ import com.printscript.ast.BinaryOperator
 import com.printscript.ast.Expression
 import com.printscript.ast.Statement
 import com.printscript.ast.Type
+import com.printscript.common.Position
+import com.printscript.language.NumberCodec
 import com.printscript.report.Diagnostic
 import com.printscript.report.Failure
-import com.printscript.common.Position
 import com.printscript.report.Result
 import com.printscript.report.Success
 import com.printscript.report.SyntacticUnit
 import com.printscript.report.SyntaxSymbol
 import com.printscript.report.flatMap
 import com.printscript.report.map
-import com.printscript.language.NumberCodec
 import com.printscript.token.Token
 
 object Parser {
+    // Public API
 
-    //Public API
     /**
      * parses a list of tokens into a statement
      */
-    fun parse(tokens: List<Token>): Result<Statement> =
-        parseStatement(TokenCursor(tokens))
+    fun parse(tokens: List<Token>): Result<Statement> = parseStatement(TokenCursor(tokens))
 
     /**
      * parses a list of tokens into an expression using Pratt parsing
@@ -31,15 +30,15 @@ object Parser {
     fun parseExpression(tokens: List<Token>): Result<Expression> =
         parseExpression(TokenCursor(tokens), 0)
 
-    //Statement Parsing
+    // Statement Parsing
+
     /**
      * parses a statement based on its first token
      */
-    private fun parseStatement(
-        cursor: TokenCursor
-    ): Result<Statement> {
-        val token = cursor.peek()
-            ?: return unexpectedEndOfStatement(cursor)
+    private fun parseStatement(cursor: TokenCursor): Result<Statement> {
+        val token =
+            cursor.peek()
+                ?: return unexpectedEndOfStatement(cursor)
 
         return when (token) {
             is Token.LetToken ->
@@ -60,38 +59,34 @@ object Parser {
     /**
      * parses a variable declaration with an optional initializer
      */
-    private fun parseVariableDeclaration(
-        cursor: TokenCursor
-    ): Result<Statement> =
+    private fun parseVariableDeclaration(cursor: TokenCursor): Result<Statement> =
         parseExpectedToken<Token.LetToken>(
             cursor,
-            SyntaxSymbol.LET
+            SyntaxSymbol.LET,
         ).flatMap { letToken ->
-        parseIdentifier(cursor).flatMap { nameToken ->
-            parseColon(cursor).flatMap {
-                parseType(cursor).flatMap { declaredType ->
-                    parseOptionalInitializer(cursor).flatMap { initializer ->
-                        parseSemicolon(cursor).map { semicolon ->
-                            Statement.VariableDeclaration(
-                                name = nameToken.lexeme,
-                                declaredType = declaredType,
-                                initializer = initializer,
-                                start = letToken.start,
-                                end = semicolon.end
-                            )
+            parseIdentifier(cursor).flatMap { nameToken ->
+                parseColon(cursor).flatMap {
+                    parseType(cursor).flatMap { declaredType ->
+                        parseOptionalInitializer(cursor).flatMap { initializer ->
+                            parseSemicolon(cursor).map { semicolon ->
+                                Statement.VariableDeclaration(
+                                    name = nameToken.lexeme,
+                                    declaredType = declaredType,
+                                    initializer = initializer,
+                                    start = letToken.start,
+                                    end = semicolon.end,
+                                )
+                            }
                         }
                     }
                 }
             }
         }
-    }
 
     /**
      * parses an assignment to a variable
      */
-    private fun parseAssignment(
-        cursor: TokenCursor
-    ): Result<Statement> =
+    private fun parseAssignment(cursor: TokenCursor): Result<Statement> =
         parseIdentifier(cursor).flatMap { nameToken ->
             parseAssign(cursor).flatMap {
                 parseExpression(cursor, 0).flatMap { value ->
@@ -100,7 +95,7 @@ object Parser {
                             name = nameToken.lexeme,
                             value = value,
                             start = nameToken.start,
-                            end = semicolon.end
+                            end = semicolon.end,
                         )
                     }
                 }
@@ -110,9 +105,7 @@ object Parser {
     /**
      * parses a println call statement
      */
-    private fun parseCallStatement(
-        cursor: TokenCursor
-    ): Result<Statement> =
+    private fun parseCallStatement(cursor: TokenCursor): Result<Statement> =
         parsePrintln(cursor).flatMap { callee ->
             parseLeftParen(cursor).flatMap {
                 parseExpression(cursor, 0).flatMap { argument ->
@@ -122,7 +115,7 @@ object Parser {
                                 callee = callee.lexeme,
                                 argument = argument,
                                 start = callee.start,
-                                end = semicolon.end
+                                end = semicolon.end,
                             )
                         }
                     }
@@ -131,31 +124,25 @@ object Parser {
         }
 
     // Statement Components
-    private fun parseIdentifier(
-        cursor: TokenCursor
-    ): Result<Token.IdentifierToken> =
+    private fun parseIdentifier(cursor: TokenCursor): Result<Token.IdentifierToken> =
         parseExpectedToken(
             cursor,
-            SyntaxSymbol.IDENTIFIER
+            SyntaxSymbol.IDENTIFIER,
         )
 
-    private fun parseColon(
-        cursor: TokenCursor
-    ): Result<Token.ColonToken> =
+    private fun parseColon(cursor: TokenCursor): Result<Token.ColonToken> =
         parseExpectedToken(
             cursor,
-            SyntaxSymbol.COLON
+            SyntaxSymbol.COLON,
         )
 
     /**
      * parses a type name into its corresponding AST type
      */
-    private fun parseType(
-        cursor: TokenCursor
-    ): Result<Type> =
+    private fun parseType(cursor: TokenCursor): Result<Type> =
         parseExpectedToken<Token.TypeNameToken>(
             cursor,
-            SyntaxSymbol.TYPE_NAME
+            SyntaxSymbol.TYPE_NAME,
         ).flatMap { token ->
             when (token.lexeme) {
                 "number" ->
@@ -169,41 +156,31 @@ object Parser {
             }
         }
 
-    private fun parseAssign(
-        cursor: TokenCursor
-    ): Result<Token.AssignToken> =
+    private fun parseAssign(cursor: TokenCursor): Result<Token.AssignToken> =
         parseExpectedToken(
             cursor,
-            SyntaxSymbol.ASSIGN
+            SyntaxSymbol.ASSIGN,
         )
 
-    private fun parseSemicolon(
-        cursor: TokenCursor
-    ): Result<Token.SemicolonToken> =
+    private fun parseSemicolon(cursor: TokenCursor): Result<Token.SemicolonToken> =
         parseExpectedToken(
             cursor,
-            SyntaxSymbol.SEMICOLON
+            SyntaxSymbol.SEMICOLON,
         )
 
-    private fun parseLeftParen(
-        cursor: TokenCursor
-    ): Result<Token.LeftParenToken> =
+    private fun parseLeftParen(cursor: TokenCursor): Result<Token.LeftParenToken> =
         parseExpectedToken(
             cursor,
-            SyntaxSymbol.LEFT_PAREN
+            SyntaxSymbol.LEFT_PAREN,
         )
 
-    private fun parseRightParen(
-        cursor: TokenCursor
-    ): Result<Token.RightParenToken> =
+    private fun parseRightParen(cursor: TokenCursor): Result<Token.RightParenToken> =
         parseExpectedToken(
             cursor,
-            SyntaxSymbol.RIGHT_PAREN
+            SyntaxSymbol.RIGHT_PAREN,
         )
 
-    private fun parsePrintln(
-        cursor: TokenCursor
-    ): Result<Token.IdentifierToken> =
+    private fun parsePrintln(cursor: TokenCursor): Result<Token.IdentifierToken> =
         parseIdentifier(cursor).flatMap { token ->
             if (token.lexeme == "println") {
                 Success(token)
@@ -212,9 +189,7 @@ object Parser {
             }
         }
 
-    private fun parseOptionalInitializer(
-        cursor: TokenCursor
-    ): Result<Expression?> {
+    private fun parseOptionalInitializer(cursor: TokenCursor): Result<Expression?> {
         if (cursor.peek() !is Token.AssignToken) {
             return Success(null)
         }
@@ -224,13 +199,14 @@ object Parser {
         return parseExpression(cursor, 0)
     }
 
-    //Expression parsing
+    // Expression parsing
+
     /**
      * parses an expression while respecting the minimum operator precedence
      */
     private fun parseExpression(
         cursor: TokenCursor,
-        minPrecedence: Int
+        minPrecedence: Int,
     ): Result<Expression> =
         parsePrimary(cursor).flatMap { left ->
             parseBinaryExpression(cursor, left, minPrecedence)
@@ -242,7 +218,7 @@ object Parser {
     private fun parseBinaryExpression(
         cursor: TokenCursor,
         left: Expression,
-        minPrecedence: Int
+        minPrecedence: Int,
     ): Result<Expression> {
         var currentLeft = left
 
@@ -262,11 +238,12 @@ object Parser {
                 is Failure -> return right
 
                 is Success -> {
-                    currentLeft = createBinaryExpression(
-                        left = currentLeft,
-                        operator = operator,
-                        right = right.value
-                    )
+                    currentLeft =
+                        createBinaryExpression(
+                            left = currentLeft,
+                            operator = operator,
+                            right = right.value,
+                        )
                 }
             }
         }
@@ -277,11 +254,10 @@ object Parser {
     /**
      * parses the atomic expressions that can appear before a binary operator
      */
-    private fun parsePrimary(
-        cursor: TokenCursor
-    ): Result<Expression> {
-        val token = cursor.consume()
-            ?: return unexpectedEndOfExpression(cursor)
+    private fun parsePrimary(cursor: TokenCursor): Result<Expression> {
+        val token =
+            cursor.consume()
+                ?: return unexpectedEndOfExpression(cursor)
 
         return parsePrimaryToken(cursor, token)
     }
@@ -291,7 +267,7 @@ object Parser {
      */
     private fun parsePrimaryToken(
         cursor: TokenCursor,
-        token: Token
+        token: Token,
     ): Result<Expression> =
         when (token) {
             is Token.NumberLiteralToken ->
@@ -302,8 +278,8 @@ object Parser {
                     Expression.StringLiteral(
                         value = token.value,
                         start = token.start,
-                        end = token.end
-                    )
+                        end = token.end,
+                    ),
                 )
 
             is Token.IdentifierToken ->
@@ -311,8 +287,8 @@ object Parser {
                     Expression.VariableReference(
                         name = token.lexeme,
                         start = token.start,
-                        end = token.end
-                    )
+                        end = token.end,
+                    ),
                 )
 
             is Token.LeftParenToken ->
@@ -325,26 +301,25 @@ object Parser {
     /**
      * parses a numeric literal using [NumberCodec], preserving its source position
      */
-    private fun parseNumber(
-        token: Token.NumberLiteralToken
-    ): Result<Expression> =
-        NumberCodec.parse(
-            text = token.value,
-            span = token.span
-        ).map { value ->
-            Expression.NumberLiteral(
-                value = value,
-                start = token.start,
-                end = token.end
-            )
-        }
+    private fun parseNumber(token: Token.NumberLiteralToken): Result<Expression> =
+        NumberCodec
+            .parse(
+                text = token.value,
+                span = token.span,
+            ).map { value ->
+                Expression.NumberLiteral(
+                    value = value,
+                    start = token.start,
+                    end = token.end,
+                )
+            }
 
     /**
      * parses the expression inside parentheses and extends its position to include them
      */
     private fun parseParenthesizedExpression(
         cursor: TokenCursor,
-        openingParen: Token.LeftParenToken
+        openingParen: Token.LeftParenToken,
     ): Result<Expression> =
         parseExpression(cursor, 0).flatMap { expression ->
             val closingParen = cursor.consume()
@@ -354,15 +329,15 @@ object Parser {
                     withPosition(
                         expression,
                         openingParen.start,
-                        closingParen.end
-                    )
+                        closingParen.end,
+                    ),
                 )
             } else {
                 Failure(
                     Diagnostic.ExpectedSymbol(
                         expected = SyntaxSymbol.RIGHT_PAREN,
-                        span = closingParen?.span ?: cursor.endOfInput()
-                    )
+                        span = closingParen?.span ?: cursor.endOfInput(),
+                    ),
                 )
             }
         }
@@ -373,14 +348,14 @@ object Parser {
     private fun createBinaryExpression(
         left: Expression,
         operator: BinaryOperator,
-        right: Expression
+        right: Expression,
     ): Expression =
         Expression.BinaryExpression(
             left = left,
             operator = operator,
             right = right,
             start = left.start,
-            end = right.end
+            end = right.end,
         )
 
     /**
@@ -402,7 +377,7 @@ object Parser {
     private fun withPosition(
         expression: Expression,
         start: Position,
-        end: Position
+        end: Position,
     ): Expression =
         when (expression) {
             is Expression.NumberLiteral ->
@@ -419,6 +394,7 @@ object Parser {
         }
 
     // Errors
+
     /**
      * the parser never words an error: it names the case and the source it
      * blames, and leaves the sentence to the renderer
@@ -430,16 +406,16 @@ object Parser {
         Failure(
             Diagnostic.UnexpectedEndOfInput(
                 unit = SyntacticUnit.EXPRESSION,
-                span = cursor.endOfInput()
-            )
+                span = cursor.endOfInput(),
+            ),
         )
 
     private fun unexpectedEndOfStatement(cursor: TokenCursor): Failure =
         Failure(
             Diagnostic.UnexpectedEndOfInput(
                 unit = SyntacticUnit.STATEMENT,
-                span = cursor.endOfInput()
-            )
+                span = cursor.endOfInput(),
+            ),
         )
 
     /**
@@ -450,7 +426,7 @@ object Parser {
      */
     private inline fun <reified T : Token> parseExpectedToken(
         cursor: TokenCursor,
-        expected: SyntaxSymbol
+        expected: SyntaxSymbol,
     ): Result<T> {
         val token = cursor.consume()
 
@@ -460,8 +436,8 @@ object Parser {
             Failure(
                 Diagnostic.ExpectedSymbol(
                     expected = expected,
-                    span = token?.span ?: cursor.endOfInput()
-                )
+                    span = token?.span ?: cursor.endOfInput(),
+                ),
             )
         }
     }

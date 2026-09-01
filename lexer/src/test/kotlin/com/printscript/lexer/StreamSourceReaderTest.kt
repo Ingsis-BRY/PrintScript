@@ -9,10 +9,7 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class StreamSourceReaderTest : SourceReaderTest() {
-
-    override fun readerOf(source: String): SourceReader {
-        return StreamSourceReader(StringReader(source))
-    }
+    override fun readerOf(source: String): SourceReader = StreamSourceReader(StringReader(source))
 
     @Test
     fun `only the lookahead is read ahead of the consumed characters`() {
@@ -52,15 +49,18 @@ class StreamSourceReaderTest : SourceReaderTest() {
     }
 
     private class CountingReader(
-        private val source: String
+        private val source: String,
     ) : Reader() {
-
         var charsRead: Int = 0
             private set
 
         private var index: Int = 0
 
-        override fun read(buffer: CharArray, offset: Int, length: Int): Int {
+        override fun read(
+            buffer: CharArray,
+            offset: Int,
+            length: Int,
+        ): Int {
             if (length == 0) {
                 return 0
             }
@@ -80,10 +80,13 @@ class StreamSourceReaderTest : SourceReaderTest() {
     }
 
     private class EndlessReader(
-        private val char: Char
+        private val char: Char,
     ) : Reader() {
-
-        override fun read(buffer: CharArray, offset: Int, length: Int): Int {
+        override fun read(
+            buffer: CharArray,
+            offset: Int,
+            length: Int,
+        ): Int {
             if (length == 0) {
                 return 0
             }
@@ -138,13 +141,16 @@ class StreamSourceReaderTest : SourceReaderTest() {
      * failing device would
      */
     private class BreakingReader(
-        private val after: Int
+        private val after: Int,
     ) : Reader() {
-
         var reads: Int = 0
             private set
 
-        override fun read(buffer: CharArray, offset: Int, length: Int): Int {
+        override fun read(
+            buffer: CharArray,
+            offset: Int,
+            length: Int,
+        ): Int {
             if (length == 0) {
                 return 0
             }

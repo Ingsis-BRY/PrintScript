@@ -12,9 +12,8 @@ import com.printscript.token.Token
  */
 class FixedLexemeRecognizer(
     private val expected: String,
-    private val build: (String, Position, Position) -> Token
+    private val build: (String, Position, Position) -> Token,
 ) : TokenRecognizer {
-
     override fun recognize(lexeme: String): RecognizerState =
         when {
             lexeme == expected -> RecognizerState.Accepted
@@ -22,6 +21,9 @@ class FixedLexemeRecognizer(
             else -> RecognizerState.Rejected
         }
 
-    override fun tokenOf(lexeme: String, start: Position, end: Position): Token =
-        build(lexeme, start, end)
+    override fun tokenOf(
+        lexeme: String,
+        start: Position,
+        end: Position,
+    ): Token = build(lexeme, start, end)
 }

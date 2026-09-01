@@ -4,6 +4,7 @@ plugins {
     id("dev.detekt") version "2.0.0-alpha.3" apply false
     base
     jacoco
+    id("org.jlleitschuh.gradle.ktlint") version "14.2.0" apply false
 }
 
 group = "org.example"
@@ -19,6 +20,7 @@ subprojects {
     // Apply and configure Detekt consistently across all subprojects
     apply(plugin = "dev.detekt")
     apply(plugin = "jacoco")
+    apply(plugin = "org.jlleitschuh.gradle.ktlint")
 
     extensions.configure<JacocoPluginExtension> {
         toolVersion = "0.8.15"
