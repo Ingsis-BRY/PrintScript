@@ -13,6 +13,7 @@ import java.nio.file.Path
 import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
@@ -56,19 +57,41 @@ class CliTest {
         }
     }
 
+    private class RecordingFormatting(
+        private val result: Result<Unit>,
+        private val out: StringBuilder,
+    ) : Formatting {
+        var closed = false
+            private set
+
+        override fun format(): Result<Unit> {
+            out.append("formatted")
+
+            return result
+        }
+
+        override fun close() {
+            closed = true
+        }
+    }
+
     private inner class Run(
         results: List<Result<Statement>>,
         failAt: Int? = null,
+        formatting: Result<Unit> = Success(Unit),
     ) {
         val progress = StringBuilder()
         val errors = StringBuilder()
+        val formatted = StringBuilder()
         val program = RecordingProgram(failAt, divisionByZero)
         val statements = FakeStatements(results)
+        val formatting = RecordingFormatting(formatting, formatted)
 
         val cli =
             Cli(
                 newStatements = { statements },
                 newProgram = { program },
+                newFormatting = { this.formatting },
                 renderer = ErrorRenderer(),
                 progress = ProgressPrinter(progress),
                 errors = errors,
@@ -156,5 +179,62 @@ class CliTest {
         assertIs<Failure>(run.cli.run(Operation.EXECUTION, anyFile))
 
         assertTrue(run.statements.closed, "un error no puede dejar el archivo abierto")
+    }
+
+    @Test
+    fun `formatting rewrites the source without parsing a statement`() {
+        val run = Run(succeeding(3))
+
+        val result = run.cli.run(Operation.FORMATTING, anyFile)
+
+        assertIs<Success<Unit>>(result)
+        assertEquals("formatted", run.formatted.toString())
+        assertTrue(run.program.executed.isEmpty(), "formatting must not execute")
+    }
+
+    @Test
+    fun `formatting reports no progress, since it never sees a statement`() {
+        val run = Run(succeeding(3))
+
+        run.cli.run(Operation.FORMATTING, anyFile)
+
+        assertTrue(run.progress.isEmpty())
+    }
+
+    @Test
+    fun `a failure while formatting reaches the renderer`() {
+        val run = Run(succeeding(1), formatting = Failure(divisionByZero))
+
+        val result = run.cli.run(Operation.FORMATTING, anyFile)
+
+        assertIs<Failure>(result)
+        assertEquals("(1:1)-(1:1) Division by zero.", run.errors.toString().trim())
+    }
+
+    @Test
+    fun `the formatting is closed when it succeeds`() {
+        val run = Run(succeeding(1))
+
+        run.cli.run(Operation.FORMATTING, anyFile)
+
+        assertTrue(run.formatting.closed)
+    }
+
+    @Test
+    fun `the formatting is closed when it fails`() {
+        val run = Run(succeeding(1), formatting = Failure(divisionByZero))
+
+        assertIs<Failure>(run.cli.run(Operation.FORMATTING, anyFile))
+
+        assertTrue(run.formatting.closed, "un error no puede dejar el archivo abierto")
+    }
+
+    @Test
+    fun `formatting does not open the statement source`() {
+        val run = Run(succeeding(3))
+
+        run.cli.run(Operation.FORMATTING, anyFile)
+
+        assertFalse(run.statements.closed, "the statement source was never opened")
     }
 }
