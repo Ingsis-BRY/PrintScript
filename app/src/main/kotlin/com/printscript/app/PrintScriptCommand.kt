@@ -1,6 +1,7 @@
 package com.printscript.app
 
 import com.printscript.cli.Operation
+import com.printscript.formatter.ConfigError
 import com.printscript.interpreter.OutputEmitter
 import com.printscript.report.Failure
 import picocli.CommandLine
@@ -27,16 +28,17 @@ internal val Discarded =
 
 @Command(
     name = "printscript",
-    description = ["Corre o valida un programa PrintScript."],
+    description = ["Corre, valida o formatea un programa PrintScript."],
 )
 class PrintScriptCommand(
     private val output: OutputEmitter,
+    private val formatted: Appendable,
     private val errors: Appendable,
 ) : Callable<Int> {
     @Parameters(
         index = "0",
         paramLabel = "OPERATION",
-        description = ["validation o execution"],
+        description = ["validation, execution o formatting"],
     )
     lateinit var operation: Operation
 
@@ -54,6 +56,13 @@ class PrintScriptCommand(
         description = ["version del lenguaje (por defecto 1.0)"],
     )
     var version: String? = null
+
+    @Option(
+        names = ["--config", "-c"],
+        paramLabel = "CONFIG",
+        description = ["archivo de reglas para formatting, en JSON"],
+    )
+    var config: Path? = null
 
     @Option(
         names = ["--verbose", "-v"],
@@ -79,8 +88,10 @@ class PrintScriptCommand(
         val cli =
             PrintScript(
                 output = output,
+                formatted = formatted,
                 progress = if (verbose) errors else Discarded,
                 errors = errors,
+                config = config,
             ).cli()
 
         return try {
@@ -89,6 +100,9 @@ class PrintScriptCommand(
             } else {
                 CommandLine.ExitCode.OK
             }
+        } catch (error: ConfigError) {
+            errors.appendLine(error.message)
+            CommandLine.ExitCode.USAGE
         } catch (error: NoSuchFileException) {
             errors.appendLine("cannot read $file: no such file")
             CommandLine.ExitCode.USAGE

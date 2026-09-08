@@ -2,9 +2,13 @@ package com.printscript.app
 
 import com.printscript.ast.Statement
 import com.printscript.cli.Cli
+import com.printscript.cli.Formatting
 import com.printscript.cli.Program
 import com.printscript.cli.ProgressPrinter
 import com.printscript.cli.StatementSource
+import com.printscript.formatter.Config
+import com.printscript.formatter.ConfigError
+import com.printscript.formatter.Formatter
 import com.printscript.interpreter.Environment
 import com.printscript.interpreter.Interpreter
 import com.printscript.interpreter.OutputEmitter
@@ -25,13 +29,16 @@ import java.nio.file.Path
 
 class PrintScript(
     private val output: OutputEmitter,
+    private val formatted: Appendable,
     private val progress: Appendable,
     private val errors: Appendable,
+    private val config: Path?,
 ) {
     fun cli(): Cli =
         Cli(
             newStatements = ::statementsIn,
             newProgram = ::newProgram,
+            newFormatting = ::formattingIn,
             renderer = ErrorRenderer(),
             progress = ProgressPrinter(progress),
             errors = errors,
@@ -56,6 +63,22 @@ class PrintScript(
 
         return InterpreterProgram(interpreter)
     }
+
+    private fun formattingIn(file: Path): Formatting {
+        val settings = Config.read(configFile())
+        val reader = Files.newBufferedReader(file)
+        val lexer = Lexer(StreamSourceReader(reader), TokenRecognizers.DEFAULT)
+
+        return StreamFormatting(
+            reader = reader,
+            formatter = Formatter(settings),
+            tokens = LexerTokens(lexer),
+            out = formatted,
+        )
+    }
+
+    private fun configFile(): Path =
+        config ?: throw ConfigError("formatting needs a configuration file: pass --config <file>.")
 
     companion object {
         const val DEFAULT_VERSION: String = "1.0"
@@ -87,6 +110,17 @@ private class StreamStatementSource(
     override fun hasNext(): Boolean = stream.hasNext()
 
     override fun next(): Result<Statement> = stream.next()
+
+    override fun close() = reader.close()
+}
+
+private class StreamFormatting(
+    private val reader: Reader,
+    private val formatter: Formatter,
+    private val tokens: TokenSource,
+    private val out: Appendable,
+) : Formatting {
+    override fun format(): Result<Unit> = formatter.format(tokens.tokens(), out)
 
     override fun close() = reader.close()
 }

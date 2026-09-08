@@ -1,11 +1,13 @@
 package com.printscript.app
 
 import com.printscript.cli.Operation
+import com.printscript.formatter.ConfigError
 import com.printscript.report.Failure
 import com.printscript.report.Success
 import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
@@ -192,5 +194,80 @@ class EndToEndTest {
         run.cli.run(Operation.EXECUTION, sourceFile("println(1 / 0);"))
 
         assertEquals("(1:9)-(1:13) Division by zero.", run.errors.toString().trim())
+    }
+
+    private fun format(
+        source: String,
+        settings: String,
+    ): String {
+        val run = Run(config = configFile(settings))
+
+        assertIs<Success<Unit>>(run.cli.run(Operation.FORMATTING, sourceFile(source)))
+
+        return run.formatted.toString()
+    }
+
+    @Test
+    fun `formatting rewrites a file with the configured rules`() {
+        val formatted =
+            format(
+                "let a:number=1;",
+                """{ "mandatory-single-space-separation": true }""",
+            )
+
+        assertEquals("let a : number = 1;", formatted)
+    }
+
+    @Test
+    fun `formatting a file leaves alone what the rules do not name`() {
+        val formatted =
+            format(
+                "let a:number   =   1;",
+                """{ "enforce-spacing-after-colon-in-declaration": true }""",
+            )
+
+        assertEquals("let a: number   =   1;", formatted)
+    }
+
+    @Test
+    fun `formatting prints nothing to the program output`() {
+        val run = Run(config = configFile("{}"))
+
+        run.cli.run(Operation.FORMATTING, sourceFile("println(1);"))
+
+        assertTrue(run.output.lines().isEmpty(), "formatting must not run the program")
+    }
+
+    @Test
+    fun `formatting a source with a lexical error reports it and stops`() {
+        val run = Run(config = configFile("{}"))
+
+        val result = run.cli.run(Operation.FORMATTING, sourceFile("let a = @;"))
+
+        assertIs<Failure>(result)
+        assertContains(run.errors.toString(), "Unexpected character '@'.")
+    }
+
+    @Test
+    fun `formatting without a configuration file is refused`() {
+        val run = Run()
+
+        val error =
+            assertFailsWith<ConfigError> {
+                run.cli.run(Operation.FORMATTING, sourceFile("println(1);"))
+            }
+
+        assertContains(error.message.orEmpty(), "--config")
+    }
+
+    @Test
+    fun `a setting the formatter cannot use is refused before the source is read`() {
+        val run = Run(config = configFile("""{ "line-breaks-after-println": 9 }"""))
+
+        assertFailsWith<ConfigError> {
+            run.cli.run(Operation.FORMATTING, sourceFile("println(1);"))
+        }
+
+        assertEquals("", run.formatted.toString())
     }
 }
