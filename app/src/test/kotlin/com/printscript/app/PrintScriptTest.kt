@@ -4,10 +4,6 @@ import kotlin.test.Test
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
-/**
- * elegir version es una decision del composition root: una version del lenguaje
- * es otra composicion, no un if adentro del CLI
- */
 class PrintScriptTest {
     @Test
     fun `the default version is supported`() {

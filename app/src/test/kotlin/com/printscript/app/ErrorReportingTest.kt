@@ -10,11 +10,6 @@ import kotlin.test.assertEquals
  * These are the only tests that tie a piece of source to a finished message:
  * every component reports its failure as a `Diagnostic` case, and the span it
  * carries has to survive the trip to `ErrorRenderer` intact.
- *
- * Vive en :app y no en :report porque para eso necesita el grafo entero, y el
- * grafo se arma en un solo lugar. Antes cableaba lexer, parser e interprete a
- * mano, lo que obligaba a :report - un modulo hoja - a tener los cuatro modulos
- * en su classpath de test.
  */
 class ErrorReportingTest {
     @Test
@@ -70,10 +65,7 @@ class ErrorReportingTest {
     }
 
     /**
-     * corre la fuente por el CLI compuesto y devuelve la linea que reporto.
-     *
-     * el CLI ya corta en el primer error y lo pasa por el renderer, asi que esto
-     * ejercita el mismo camino que ve un usuario en lugar de rehacerlo
+     * runs one statement through the composed CLI and returns the line it reported
      */
     private fun reportOf(source: String): String {
         val run = Run()

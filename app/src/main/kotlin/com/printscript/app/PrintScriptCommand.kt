@@ -12,10 +12,6 @@ import java.nio.file.NoSuchFileException
 import java.nio.file.Path
 import java.util.concurrent.Callable
 
-/**
- * un Appendable que descarta todo, para apagar el avance del parseo sin que el
- * CLI tenga que saber si alguien lo esta mirando
- */
 internal val Discarded =
     object : Appendable {
         override fun append(value: CharSequence?): Appendable = this
@@ -29,18 +25,6 @@ internal val Discarded =
         override fun append(value: Char): Appendable = this
     }
 
-/**
- * la linea de comandos: traduce argv a una corrida y su resultado a un codigo de
- * salida. no arma el grafo, se lo pide a [PrintScript].
- *
- * recibe sus dos sinks por constructor, como todo lo demas, asi que un test la
- * ejercita entera sin tocar la consola ni matar la JVM: devuelve el codigo en
- * lugar de llamar a exitProcess, que es lo unico que queda en main.
- *
- * los campos son var y lateinit porque picocli los asigna por reflexion y no
- * pueden ser final. es el precio de la libreria, y no se contagia: el resto del
- * codigo sigue siendo inmutable.
- */
 @Command(
     name = "printscript",
     description = ["Corre o valida un programa PrintScript."],
@@ -77,9 +61,6 @@ class PrintScriptCommand(
     )
     var verbose: Boolean = false
 
-    // declarada a mano en lugar de mixinStandardHelpOptions, que agrega tambien
-    // -V/--version con el sentido de "la version de la herramienta" y chocaria
-    // con la version del lenguaje que este CLI ya recibe
     @Option(
         names = ["-h", "--help"],
         usageHelp = true,
@@ -102,9 +83,6 @@ class PrintScriptCommand(
                 errors = errors,
             ).cli()
 
-        // el archivo se abre recien cuando la corrida arranca, asi que no
-        // alcanza con validar el Path: que no exista o no se pueda leer es un
-        // mal uso del CLI, no una falla del programa
         return try {
             if (cli.run(operation, file) is Failure) {
                 CommandLine.ExitCode.SOFTWARE

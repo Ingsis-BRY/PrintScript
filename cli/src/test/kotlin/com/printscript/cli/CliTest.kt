@@ -24,12 +24,8 @@ class CliTest {
     private fun statement(): Statement =
         Statement.CallStatement("println", Expression.NumberLiteral(1.0, at, at), at, at)
 
-    // el CLI no abre el archivo: se lo pide a la fabrica, asi que un Path que no
-    // existe alcanza para los tests
     private val anyFile: Path = Path.of("ignored-by-the-fake.ps")
 
-    // entrega sentencias ya armadas y recuerda si la cerraron: el CLI no tiene
-    // por que saber que detras habria un lexer y un parser
     private class FakeStatements(
         results: List<Result<Statement>>,
     ) : StatementSource {
@@ -143,8 +139,6 @@ class CliTest {
         assertIs<Failure>(result)
         assertContains(run.errors.toString(), "Division by zero.")
     }
-
-    // Cerrar la fuente
 
     @Test
     fun `the source is closed when the run succeeds`() {

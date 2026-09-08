@@ -20,10 +20,6 @@ enum class Operation {
 *
 * the source is consumed one statement at a time, so a file of any size is
 * never loaded whole.
-*
-* no sabe que detras de un programa hay un archivo: recibe una fabrica de
-* [StatementSource] porque la fuente depende de un valor que solo existe en el
-* momento de la corrida, y la cierra cuando termina, salga bien o mal.
 */
 class Cli(
     private val newStatements: (Path) -> StatementSource,

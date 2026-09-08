@@ -9,15 +9,7 @@ import kotlin.test.assertContains
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-/**
- * la linea de comandos, ejercitada entera.
- *
- * antes esto no se podia testear: el parseo de argumentos vivia en main, al lado
- * del exitProcess que hubiera matado al worker. ahora el comando devuelve el
- * codigo y recibe sus sinks, asi que un test lo corre sin tocar la consola.
- */
 class PrintScriptCommandTest {
-    // lo que una corrida escribe, mas la salida de uso que imprime picocli
     private class Run {
         val output = CollectingOutput()
         val errors = StringBuilder()
@@ -32,8 +24,6 @@ class PrintScriptCommandTest {
                 .setOut(PrintWriter(usage))
                 .execute(*args)
     }
-
-    // Codigos de salida
 
     @Test
     fun `a program that runs exits with zero`() {
@@ -80,8 +70,6 @@ class PrintScriptCommandTest {
         assertEquals(CommandLine.ExitCode.USAGE, run.execute("execution"))
     }
 
-    // Operacion
-
     @Test
     fun `the operation is read regardless of case`() {
         val run = Run()
@@ -101,8 +89,6 @@ class PrintScriptCommandTest {
         assertEquals(CommandLine.ExitCode.OK, code)
         assertTrue(run.output.lines().isEmpty(), "validation no ejecuta")
     }
-
-    // Version
 
     @Test
     fun `the supported version is accepted`() {
@@ -124,8 +110,6 @@ class PrintScriptCommandTest {
         assertContains(run.errors.toString(), "Unsupported version: 9.9")
         assertTrue(run.output.lines().isEmpty(), "no se ejecuta nada")
     }
-
-    // Progreso
 
     @Test
     fun `progress is quiet by default`() {
@@ -153,8 +137,6 @@ class PrintScriptCommandTest {
 
         assertContains(run.errors.toString(), "parsed statement")
     }
-
-    // Ayuda
 
     @Test
     fun `help lists the operands and exits cleanly`() {
