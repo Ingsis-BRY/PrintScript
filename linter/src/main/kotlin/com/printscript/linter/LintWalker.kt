@@ -3,8 +3,8 @@ package com.printscript.linter
 import com.printscript.ast.Expression
 import com.printscript.ast.Statement
 import com.printscript.linter.report.LintFinding
-import com.printscript.linter.report.LintNode
 import com.printscript.linter.report.LintReport
+import com.printscript.linter.rules.LintNode
 import com.printscript.linter.rules.LintRule
 
 /**

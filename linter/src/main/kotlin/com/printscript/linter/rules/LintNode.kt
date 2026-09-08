@@ -1,4 +1,4 @@
-package com.printscript.linter.report
+package com.printscript.linter.rules
 
 sealed interface LintNode {
     data class Statement(

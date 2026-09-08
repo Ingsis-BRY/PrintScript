@@ -5,7 +5,7 @@ import com.printscript.ast.Statement
 import com.printscript.common.Span
 import com.printscript.linter.config.identifier.IdentifierFormatConfig
 import com.printscript.linter.report.LintFinding
-import com.printscript.linter.report.LintNode
+import com.printscript.linter.rules.LintNode
 import com.printscript.linter.rules.LintRule
 
 class IdentifierFormatingRule(

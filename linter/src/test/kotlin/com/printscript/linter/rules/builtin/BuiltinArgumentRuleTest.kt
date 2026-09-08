@@ -6,7 +6,7 @@ import com.printscript.ast.Statement
 import com.printscript.common.Position
 import com.printscript.common.Span
 import com.printscript.linter.report.LintFinding
-import com.printscript.linter.report.LintNode
+import com.printscript.linter.rules.LintNode
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
