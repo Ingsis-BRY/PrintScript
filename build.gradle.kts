@@ -7,10 +7,10 @@ plugins {
     id("org.jlleitschuh.gradle.ktlint") version "14.2.0" apply false
 }
 
-group = "org.example"
-version = "1.0-SNAPSHOT"
-
 allprojects {
+    group = "com.printscript"
+    version = (findProperty("releaseVersion") as String? ?: "1.0-SNAPSHOT").removePrefix("v")
+
     repositories {
         mavenCentral()
     }
@@ -30,6 +30,32 @@ subprojects {
         config.setFrom(rootProject.file("config/detekt/detekt.yml"))
         buildUponDefaultConfig.set(false)
         ignoreFailures.set(false)
+    }
+
+    apply(plugin = "maven-publish")
+
+    plugins.withId("org.jetbrains.kotlin.jvm") {
+        extensions.configure<JavaPluginExtension> {
+            withSourcesJar()
+        }
+
+        extensions.configure<PublishingExtension> {
+            publications {
+                register<MavenPublication>("maven") {
+                    from(components["java"])
+                }
+            }
+            repositories {
+                maven {
+                    name = "GitHubPackages"
+                    url = uri("https://maven.pkg.github.com/Ingsis-BRY/PrintScript")
+                    credentials {
+                        username = project.findProperty("gpr.user") as String? ?: System.getenv("USERNAME")
+                        password = project.findProperty("gpr.key") as String? ?: System.getenv("TOKEN")
+                    }
+                }
+            }
+        }
     }
 }
 tasks.register("installGitHook") {
