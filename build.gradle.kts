@@ -43,10 +43,11 @@ tasks.register("installGitHook") {
     }
 }
 
-// :app queda fuera de la medicion: solo contiene el entrypoint, que cablea los
-// modulos y termina el proceso con exitProcess. Invocarlo desde un test mataria
-// la JVM del worker, asi que no es codigo que se pueda cubrir.
-val coveredProjects = subprojects.filter { it.name != "app" }
+// todos los submodulos entran en la medicion, :app incluido. lo unico que queda
+// afuera es MainKt: termina el proceso con exitProcess, asi que invocarlo desde
+// un test mataria la JVM del worker. el cableado ya no vive ahi - vive en
+// PrintScript, que es una clase comun y la ejercitan los tests end to end.
+val coveredProjects = subprojects
 
 // entradas comunes al reporte y a la verificacion: los .exec, las fuentes y
 // las clases compiladas de los modulos medidos
@@ -56,7 +57,7 @@ val executionFiles = files(
 val sourceDirs = files(coveredProjects.map { it.file("src/main/kotlin") })
 val classDirs = files(
     coveredProjects.map { it.layout.buildDirectory.dir("classes/kotlin/main") }
-)
+).asFileTree.matching { exclude("**/com/printscript/app/MainKt*") }
 
 /**
 * suma la cobertura de todos los submodulos en un unico reporte, para leerlo

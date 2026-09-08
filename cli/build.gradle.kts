@@ -9,7 +9,6 @@ kotlin {
 dependencies {
     implementation(project(":common"))
     implementation(project(":ast"))
-    implementation(project(":pipeline"))
     implementation(project(":report"))
 
     testImplementation(kotlin("test"))
