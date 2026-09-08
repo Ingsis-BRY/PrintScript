@@ -1,9 +1,5 @@
 plugins {
-    kotlin("jvm")
-}
-
-kotlin {
-    jvmToolchain(25)
+    id("printscript.kotlin-module")
 }
 
 dependencies {
@@ -13,9 +9,4 @@ dependencies {
 
     testImplementation(project(":lexer"))
     testImplementation(project(":parser"))
-    testImplementation(kotlin("test"))
-}
-
-tasks.test {
-    useJUnitPlatform()
 }

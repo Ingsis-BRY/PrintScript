@@ -1,9 +1,5 @@
 plugins {
-    kotlin("jvm")
-}
-
-kotlin {
-    jvmToolchain(25)
+    id("printscript.kotlin-module")
 }
 
 dependencies {
@@ -11,10 +7,4 @@ dependencies {
     api(project(":ast"))
 
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0")
-
-    testImplementation(kotlin("test"))
-}
-
-tasks.test {
-    useJUnitPlatform()
 }

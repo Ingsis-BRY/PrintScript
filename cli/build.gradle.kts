@@ -1,19 +1,9 @@
 plugins {
-    kotlin("jvm")
-}
-
-kotlin {
-    jvmToolchain(25)
+    id("printscript.kotlin-module")
 }
 
 dependencies {
     implementation(project(":common"))
     implementation(project(":ast"))
     implementation(project(":report"))
-
-    testImplementation(kotlin("test"))
-}
-
-tasks.test {
-    useJUnitPlatform()
 }
