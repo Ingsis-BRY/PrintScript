@@ -12,6 +12,7 @@ dependencies {
     implementation(project(":formatter"))
     implementation(project(":pipeline"))
     implementation(project(":lexer"))
+    implementation(project(":linter"))
     implementation(project(":parser"))
     implementation(project(":interpreter"))
     implementation(project(":report"))

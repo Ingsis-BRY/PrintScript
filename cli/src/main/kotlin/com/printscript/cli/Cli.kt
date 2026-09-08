@@ -10,6 +10,7 @@ enum class Operation {
     VALIDATION,
     EXECUTION,
     FORMATTING,
+    ANALYZING,
 }
 
 /**
@@ -23,6 +24,7 @@ class Cli(
     private val newStatements: (Path) -> StatementSource,
     private val newProgram: () -> Program,
     private val newFormatting: (Path) -> Formatting,
+    private val newAnalyzing: (Path) -> Analyzing,
     private val renderer: ErrorRenderer,
     private val progress: ProgressPrinter,
     private val errors: Appendable,
@@ -35,6 +37,7 @@ class Cli(
             Operation.VALIDATION -> overStatements(file, ::validate)
             Operation.EXECUTION -> overStatements(file, ::execute)
             Operation.FORMATTING -> format(file)
+            Operation.ANALYZING -> analyze(file)
         }
 
     private fun overStatements(
@@ -78,6 +81,12 @@ class Cli(
         }
 
         return Success(Unit)
+    }
+
+    private fun analyze(file: Path): Result<Unit> {
+        val result = newAnalyzing(file).use { it.analyze() }
+
+        return if (result is Failure) report(result) else result
     }
 
     private fun report(failure: Failure): Failure {
