@@ -15,6 +15,9 @@ dependencies {
     implementation(project(":interpreter"))
     implementation(project(":report"))
 
+    // parsea argv y nada mas: no arma ningun grafo de objetos
+    implementation("info.picocli:picocli:4.7.7")
+
     testImplementation(kotlin("test"))
 }
 

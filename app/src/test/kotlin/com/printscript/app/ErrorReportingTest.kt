@@ -1,28 +1,22 @@
-package com.printscript.report
+package com.printscript.app
 
-import com.printscript.interpreter.CollectingOutput
-import com.printscript.interpreter.Environment
-import com.printscript.interpreter.Interpreter
-import com.printscript.interpreter.ValueOps
-import com.printscript.lexer.Lexer
-import com.printscript.lexer.StringSourceReader
-import com.printscript.lexer.recognizer.TokenRecognizers
-import com.printscript.parser.Parser
-import com.printscript.token.Token
+import com.printscript.cli.Operation
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.fail
 
 /**
  * Reads a broken statement end to end and checks the line the user gets.
  *
  * These are the only tests that tie a piece of source to a finished message:
- * every component reports its failure as a [Diagnostic] case, and the
- * span it carries has to survive the trip to [ErrorRenderer] intact.
+ * every component reports its failure as a `Diagnostic` case, and the span it
+ * carries has to survive the trip to `ErrorRenderer` intact.
+ *
+ * Vive en :app y no en :report porque para eso necesita el grafo entero, y el
+ * grafo se arma en un solo lugar. Antes cableaba lexer, parser e interprete a
+ * mano, lo que obligaba a :report - un modulo hoja - a tener los cuatro modulos
+ * en su classpath de test.
  */
 class ErrorReportingTest {
-    private val renderer = ErrorRenderer()
-
     @Test
     fun `a character no token can begin with is blamed on itself`() {
         assertEquals("(1:9)-(1:9) Unexpected character '@'.", reportOf("let x = @;"))
@@ -76,31 +70,16 @@ class ErrorReportingTest {
     }
 
     /**
-     * lexes, parses and runs one statement, and renders the first failure
+     * corre la fuente por el CLI compuesto y devuelve la linea que reporto.
+     *
+     * el CLI ya corta en el primer error y lo pasa por el renderer, asi que esto
+     * ejercita el mismo camino que ve un usuario en lugar de rehacerlo
      */
-    private fun reportOf(source: String): String = renderer.render(errorOf(source))
+    private fun reportOf(source: String): String {
+        val run = Run()
 
-    private fun errorOf(source: String): Diagnostic {
-        val tokens = mutableListOf<Token>()
+        run.cli.run(Operation.EXECUTION, sourceFile(source))
 
-        for (result in Lexer(StringSourceReader(source), TokenRecognizers.DEFAULT).tokens()) {
-            when (result) {
-                is Success -> tokens.add(result.value)
-                is Failure -> return result.error
-            }
-        }
-
-        val statement =
-            when (val parsed = Parser.parse(tokens)) {
-                is Success -> parsed.value
-                is Failure -> return parsed.error
-            }
-
-        val interpreter = Interpreter(Environment(), CollectingOutput(), ValueOps())
-
-        return when (val executed = interpreter.execute(statement)) {
-            is Failure -> executed.error
-            is Success -> fail("expected $source to fail, but it ran")
-        }
+        return run.errors.toString().trim()
     }
 }

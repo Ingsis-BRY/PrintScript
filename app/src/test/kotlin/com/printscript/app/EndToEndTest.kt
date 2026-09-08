@@ -1,68 +1,15 @@
 package com.printscript.app
 
-import com.printscript.cli.Cli
 import com.printscript.cli.Operation
-import com.printscript.cli.Program
-import com.printscript.cli.ProgressPrinter
-import com.printscript.interpreter.CollectingOutput
-import com.printscript.interpreter.Environment
-import com.printscript.interpreter.Interpreter
-import com.printscript.interpreter.ValueOps
-import com.printscript.lexer.Lexer
-import com.printscript.lexer.StreamSourceReader
-import com.printscript.lexer.recognizer.TokenRecognizers
-import com.printscript.parser.Parser
-import com.printscript.pipeline.StatementParser
-import com.printscript.pipeline.StatementStream
-import com.printscript.pipeline.TokenSource
-import com.printscript.report.ErrorRenderer
 import com.printscript.report.Failure
-import com.printscript.report.Result
 import com.printscript.report.Success
-import java.nio.file.Files
-import java.nio.file.Path
 import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
 class EndToEndTest {
-    private fun sourceFile(source: String): Path {
-        val file = Files.createTempFile("printscript", ".ps")
-        file.toFile().deleteOnExit()
-        Files.writeString(file, source)
-        return file
-    }
-
-    // the pieces a run writes to, kept together so a test can inspect any of them
-    private class Run(
-        val output: CollectingOutput = CollectingOutput(),
-        val progress: StringBuilder = StringBuilder(),
-        val errors: StringBuilder = StringBuilder(),
-    ) {
-        val cli =
-            Cli(
-                newStream = { reader ->
-                    val lexer = Lexer(StreamSourceReader(reader), TokenRecognizers.DEFAULT)
-
-                    StatementStream(
-                        source = TokenSource(lexer::tokens),
-                        parser = StatementParser(Parser::parse),
-                    )
-                },
-                newProgram = {
-                    val interpreter = Interpreter(Environment(), output, ValueOps())
-
-                    Program(interpreter::execute)
-                },
-                renderer = ErrorRenderer(),
-                progress = ProgressPrinter(progress),
-                errors = errors,
-            )
-    }
-
     // runs the source and returns the collected program output, failing the test
     // if the run does not succeed
     private fun execute(source: String): List<String> {
@@ -245,31 +192,5 @@ class EndToEndTest {
         run.cli.run(Operation.EXECUTION, sourceFile("println(1 / 0);"))
 
         assertEquals("(1:9)-(1:13) Division by zero.", run.errors.toString().trim())
-    }
-
-    // Version
-
-    @Test
-    fun `the supported version is accepted`() {
-        val run = Run()
-
-        val result: Result<Unit> =
-            run.cli.run(Operation.EXECUTION, sourceFile("println(1);"), version = "1.0")
-
-        assertIs<Success<Unit>>(result)
-        assertEquals(listOf("1"), run.output.lines())
-    }
-
-    @Test
-    fun `an unsupported version is rejected before the file is read`() {
-        val run = Run()
-
-        val error =
-            assertFailsWith<IllegalArgumentException> {
-                run.cli.run(Operation.EXECUTION, sourceFile("println(1);"), version = "9.9")
-            }
-
-        assertContains(error.message.orEmpty(), "Unsupported version")
-        assertTrue(run.output.lines().isEmpty())
     }
 }
