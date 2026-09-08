@@ -1,6 +1,7 @@
 package com.printscript.app
 
 import com.printscript.ast.Statement
+import com.printscript.cli.Analyzing
 import com.printscript.cli.Cli
 import com.printscript.cli.Formatting
 import com.printscript.cli.Program
@@ -16,12 +17,17 @@ import com.printscript.interpreter.ValueOps
 import com.printscript.lexer.Lexer
 import com.printscript.lexer.StreamSourceReader
 import com.printscript.lexer.recognizer.TokenRecognizers
+import com.printscript.linter.Linter
+import com.printscript.linter.config.LintConfig
+import com.printscript.linter.config.identifier.IdentifierStyle
+import com.printscript.linter.report.LintFinding
 import com.printscript.parser.Parser
 import com.printscript.pipeline.StatementParser
 import com.printscript.pipeline.StatementStream
 import com.printscript.pipeline.TokenSource
 import com.printscript.report.ErrorRenderer
 import com.printscript.report.Result
+import com.printscript.report.Success
 import com.printscript.token.Token
 import java.io.Reader
 import java.nio.file.Files
@@ -39,6 +45,7 @@ class PrintScript(
             newStatements = ::statementsIn,
             newProgram = ::newProgram,
             newFormatting = ::formattingIn,
+            newAnalyzing = ::analyzingIn,
             renderer = ErrorRenderer(),
             progress = ProgressPrinter(progress),
             errors = errors,
@@ -74,6 +81,15 @@ class PrintScript(
             formatter = Formatter(settings),
             tokens = LexerTokens(lexer),
             out = formatted,
+        )
+    }
+
+    private fun analyzingIn(file: Path): Analyzing {
+        val settings = LintConfig.read(configFile())
+
+        return StreamAnalyzing(
+            statements = statementsIn(file),
+            linter = Linter(settings),
         )
     }
 
@@ -123,4 +139,53 @@ private class StreamFormatting(
     override fun format(): Result<Unit> = formatter.format(tokens.tokens(), out)
 
     override fun close() = reader.close()
+}
+
+private class StreamAnalyzing(
+    private val statements: StatementSource,
+    private val linter: Linter,
+) : Analyzing {
+    override fun analyze(): Result<Unit> {
+        while (statements.hasNext()) {
+            val result = statements.next()
+
+            if (result is Success) {
+                linter
+                    .lint(listOf(result.value))
+                    .findings
+                    .forEach { println(formatFinding(it)) }
+            }
+        }
+
+        return Success(Unit)
+    }
+
+    override fun close() {
+        statements.close()
+    }
+
+    private fun formatFinding(finding: LintFinding): String {
+        val location =
+            "${finding.span.start.line}:${finding.span.start.column}"
+
+        return "$location ${message(finding)}"
+    }
+
+    private fun message(finding: LintFinding): String =
+        when (finding) {
+            is LintFinding.InvalidIdentifier ->
+                "Invalid identifier '${finding.name}': expected ${style(finding.expectedStyle)}."
+
+            is LintFinding.InvalidPrintlnArgument ->
+                "Invalid println argument: expected a variable or literal."
+
+            is LintFinding.InvalidReadInputArgument ->
+                "Invalid readInput argument: expected a variable or literal."
+        }
+
+    private fun style(style: IdentifierStyle): String =
+        when (style) {
+            IdentifierStyle.CAMEL_CASE -> "camel case"
+            IdentifierStyle.SNAKE_CASE -> "snake case"
+        }
 }

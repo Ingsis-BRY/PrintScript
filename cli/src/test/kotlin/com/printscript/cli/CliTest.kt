@@ -75,15 +75,36 @@ class CliTest {
         }
     }
 
+    private class RecordingAnalyzing(
+        private val result: Result<Unit>,
+    ) : Analyzing {
+        var closed = false
+            private set
+
+        var analyzed = false
+            private set
+
+        override fun analyze(): Result<Unit> {
+            analyzed = true
+            return result
+        }
+
+        override fun close() {
+            closed = true
+        }
+    }
+
     private inner class Run(
         results: List<Result<Statement>>,
         failAt: Int? = null,
         formatting: Result<Unit> = Success(Unit),
+        analyzing: Result<Unit> = Success(Unit),
     ) {
         val progress = StringBuilder()
         val errors = StringBuilder()
         val formatted = StringBuilder()
         val program = RecordingProgram(failAt, divisionByZero)
+        val analyzing = RecordingAnalyzing(analyzing)
         val statements = FakeStatements(results)
         val formatting = RecordingFormatting(formatting, formatted)
 
@@ -92,6 +113,7 @@ class CliTest {
                 newStatements = { statements },
                 newProgram = { program },
                 newFormatting = { this.formatting },
+                newAnalyzing = { this.analyzing },
                 renderer = ErrorRenderer(),
                 progress = ProgressPrinter(progress),
                 errors = errors,
@@ -236,5 +258,38 @@ class CliTest {
         run.cli.run(Operation.FORMATTING, anyFile)
 
         assertFalse(run.statements.closed, "the statement source was never opened")
+    }
+
+    @Test
+    fun `analyzing runs the analyzer`() {
+        val run = Run(succeeding(3))
+
+        val result = run.cli.run(Operation.ANALYZING, anyFile)
+
+        assertIs<Success<Unit>>(result)
+        assertTrue(run.analyzing.analyzed)
+    }
+
+    @Test
+    fun `analyzing closes the analyzer when it succeeds`() {
+        val run = Run(succeeding(1))
+
+        run.cli.run(Operation.ANALYZING, anyFile)
+
+        assertTrue(run.analyzing.closed)
+    }
+
+    @Test
+    fun `a failure while analyzing reaches the renderer`() {
+        val run = Run(succeeding(1), analyzing = Failure(divisionByZero))
+
+        val result = run.cli.run(Operation.ANALYZING, anyFile)
+
+        assertIs<Failure>(result)
+        assertEquals(
+            "(1:1)-(1:1) Division by zero.",
+            run.errors.toString().trim(),
+        )
+        assertTrue(run.analyzing.closed)
     }
 }
