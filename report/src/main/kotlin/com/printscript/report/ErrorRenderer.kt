@@ -70,6 +70,9 @@ class ErrorRenderer {
 
             is Diagnostic.DivisionByZero ->
                 "Division by zero."
+
+            is Diagnostic.UnsupportedStatement ->
+                "Unsupported statement."
         }
 
     private fun describe(fault: LexicalFault): String =

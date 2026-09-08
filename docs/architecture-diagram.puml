@@ -382,10 +382,34 @@ package lexer {
 ' ------------------------------------------------------------
 package parser {
 
-    class Parser <<object>> {
+    class Parser {
+        -syntaxes: List<StatementSyntax>
         +parse(tokens: List<Token>): Result<Statement>
-        +parseExpression(tokens: List<Token>): Result<Expression>
     }
+
+    interface StatementSyntax {
+        +matches(token: Token): Boolean
+        +parse(cursor: TokenCursor, expressions: Expressions): Result<Statement>
+    }
+
+    interface Expressions <<fun>> {
+        +parse(): Result<Expression>
+    }
+
+    class VariableDeclarationSyntax <<object>> implements StatementSyntax
+    class AssignmentSyntax <<object>> implements StatementSyntax
+    class CallSyntax implements StatementSyntax
+
+    class StatementSyntaxes <<object>> {
+        +DEFAULT: List<StatementSyntax>
+    }
+
+    class ExpressionParser implements Expressions
+
+    note bottom of StatementSyntaxes
+      mismo desempate que el lexer: si dos sintaxis
+      reclaman el mismo token, gana la primera de la lista
+    end note
 
     class TokenCursor {
         -tokens: List<Token>
@@ -407,8 +431,42 @@ package interpreter {
         -environment: Environment
         -output: OutputEmitter
         -valueOps: ValueOps
+        -executors: List<StatementExecutor>
         +execute(statement: Statement): Result<Unit>
     }
+
+    interface StatementExecutor {
+        +matches(statement: Statement): Boolean
+        +execute(statement: Statement, context: ExecutionContext): Result<Unit>
+    }
+
+    interface ExecutionContext {
+        +environment: Environment
+        +evaluate(expression: Expression): Result<Value>
+        +emit(line: String)
+    }
+
+    class DeclarationExecutor <<object>> implements StatementExecutor
+    class AssignmentExecutor <<object>> implements StatementExecutor
+    class CallExecutor implements StatementExecutor
+
+    class StatementExecutors <<object>> {
+        +DEFAULT: List<StatementExecutor>
+    }
+
+    interface Builtin <<fun>> {
+        +call(argument: Value, span: Span, context: ExecutionContext): Result<Unit>
+    }
+
+    class Builtins <<object>> {
+        +DEFAULT: Map<String, Builtin>
+    }
+
+    note bottom of StatementExecutors
+      el registro reemplaza al when exhaustivo:
+      StatementExecutorsTest verifica que cubra
+      todo el sealed hierarchy de Statement
+    end note
 
     class Environment {
         -slots: MutableMap<String, Slot>
@@ -532,6 +590,14 @@ Lexer *--> SourceReader
 Lexer o--> TokenRecognizer
 Lexer ..> Token : construye
 TokenRecognizers ..> TokenRecognizer : lista por prioridad
+Parser o--> StatementSyntax
+StatementSyntaxes ..> StatementSyntax : lista por prioridad
+StatementSyntax ..> Expressions : delega expresiones
+Interpreter o--> StatementExecutor
+Interpreter ..|> ExecutionContext
+StatementExecutors ..> StatementExecutor : lista
+CallExecutor o--> Builtin
+Builtins ..> Builtin : registro por nombre
 
 Parser ..> Token : consume
 Parser *--> TokenCursor
@@ -570,7 +636,7 @@ Main ..> StatementStream : construye
 Main ..> Interpreter : construye
 Main ..> ConsoleOutput : construye
 Main ..> TokenSource : Lexer::tokens
-Main ..> StatementParser : Parser::parse
+Main ..> StatementParser : Parser(StatementSyntaxes.DEFAULT)::parse
 Main ..> Program : Interpreter::execute
 
 Lexer ..> Result : devuelve

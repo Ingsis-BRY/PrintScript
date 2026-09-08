@@ -14,6 +14,7 @@ import com.printscript.interpreter.Environment
 import com.printscript.interpreter.Interpreter
 import com.printscript.interpreter.OutputEmitter
 import com.printscript.interpreter.ValueOps
+import com.printscript.interpreter.executor.StatementExecutors
 import com.printscript.lexer.Lexer
 import com.printscript.lexer.StreamSourceReader
 import com.printscript.lexer.recognizer.TokenRecognizers
@@ -66,7 +67,7 @@ class PrintScript(
     }
 
     private fun newProgram(): Program {
-        val interpreter = Interpreter(Environment(), output, ValueOps())
+        val interpreter = Interpreter(Environment(), output, ValueOps(), StatementExecutors.DEFAULT)
 
         return InterpreterProgram(interpreter)
     }

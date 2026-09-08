@@ -17,10 +17,11 @@ Las dos piezas que dependen de un valor de runtime entran como factories y no co
 el StatementStream necesita el Reader del archivo y es de un solo uso, y el Interpreter necesita
 un Environment vacio por corrida. Un composition root no puede construir lo que todavia no existe.
 
-No se inyecta todo. NumberCodec, OperatorRules, PrecedenceTable y Parser son stateless,
-deterministas y sin I/O: son dependencias estables y se siguen llamando directo como object.
-Se inyecta solo lo volatil: el I/O (OutputEmitter, SourceReader, los sinks de error y progreso)
-y el estado mutable (Environment). Inyectar lo estable agrega ceremonia sin comprar nada.
+No se inyecta todo. NumberCodec, OperatorRules y PrecedenceTable son stateless, deterministas y sin
+I/O: son dependencias estables y se siguen llamando directo como object.
+Se inyecta solo lo volatil: el I/O (OutputEmitter, SourceReader, los sinks de error y progreso),
+el estado mutable (Environment) y los catalogos que definen que entiende cada version del lenguaje
+(los recognizers, las sintaxis, los executors). Inyectar lo estable agrega ceremonia sin comprar nada.
 
 Descartado: un contenedor de DI (Koin, Dagger). A esta escala aporta reflexion, configuracion y
 errores en runtime en lugar de en compilacion; Pure DI se lee de arriba a abajo en un archivo y
@@ -96,3 +97,34 @@ La contra honesta: lee sus anotaciones por reflexion, y obliga a que los campos 
 y lateinit porque los asigna despues de construir. Eso convive con "el compilador verifica el grafo"
 porque lo que refleja es argv, en el borde del proceso, y no las dependencias entre modulos; pero es
 una tension real y conviene decirla antes de que la encuentren.
+
+Lo comun del build vive en convention plugins en buildSrc, no en un subprojects {} del root.
+Los 13 modulos repetian el mismo bloque de plugins, toolchain, dependencia de test y
+useJUnitPlatform; ahora declaran un id y sus dependencias, y nada mas. La diferencia real no es
+el ahorro de lineas: un subprojects {} configura hijos desde afuera, asi que hay que leer el root
+para saber que le pasa a un modulo, y no hay forma de que un modulo elija. Un plugin se aplica,
+y aplicarlo es una linea visible en el modulo. Por eso :app aplica kotlin-application y no
+kotlin-module: la diferencia entre una libreria y un ejecutable pasa a estar declarada.
+Descartado: un composite build con includeBuild("build-logic"), que es lo idiomatico a escala
+pero agrega un settings y un build entero para 13 modulos chicos. Descartado tambien dejar el
+subprojects {} y usar buildSrc solo para lo de los modulos: la configuracion quedaba partida en
+dos lugares, que era el problema original.
+
+El parser y el interprete despachan por registro, igual que el lexer. TokenRecognizers.DEFAULT ya
+era eso: agregar un token es un archivo nuevo y una entrada, nunca editar un recognizer. Ahora
+StatementSyntaxes.DEFAULT y StatementExecutors.DEFAULT tienen la misma forma, y el orden desempata
+igual - CallSyntax va antes que AssignmentSyntax porque las dos reclaman un IdentifierToken.
+En el parser el cambio no cuesta nada: el dispatch ya tenia un else, o sea que el conjunto de
+sentencias siempre fue abierto.
+En el interprete si cuesta. El when era exhaustivo sobre un sealed interface, asi que el compilador
+era el que avisaba que faltaba cubrir una sentencia nueva; el registro cambia ese aviso por uno en
+tiempo de test. Se paga a conciencia y se compensa con StatementExecutorsTest, que recorre
+Statement::class.sealedSubclasses y falla si alguna no esta cubierta - incluida la variante de que
+la sentencia sea tan nueva que el test no sepa construirla. Es el mismo trato que ya hace
+ErrorRenderer al reves: ahi se eligio que el compilador obligue, aca que obligue un test, porque lo
+que se compra es que agregar una sentencia deje de tocar codigo existente.
+Un executor que reciba una sentencia que no es la suya devuelve UnsupportedStatement y no tira
+ClassCastException: la primera invariante vale tambien para el codigo que hace de plumbing.
+Descartado: hacer publico ParsingSupport para que se puedan escribir sintaxis desde otro modulo.
+Congelaria los helpers como API sin un consumidor real. Las sintaxis viven en :parser igual que
+los recognizers viven en :lexer.

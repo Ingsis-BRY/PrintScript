@@ -7,4 +7,6 @@ dependencies {
     api(project(":ast"))
     api(project(":report"))
     implementation(project(":language"))
+
+    testImplementation(kotlin("reflect"))
 }
