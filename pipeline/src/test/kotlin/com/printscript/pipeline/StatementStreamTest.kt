@@ -7,6 +7,7 @@ import com.printscript.lexer.Lexer
 import com.printscript.lexer.StringSourceReader
 import com.printscript.lexer.recognizer.TokenRecognizers
 import com.printscript.parser.Parser
+import com.printscript.parser.syntax.StatementSyntaxes
 import com.printscript.report.Diagnostic
 import com.printscript.report.Failure
 import com.printscript.report.Success
@@ -23,7 +24,7 @@ class StatementStreamTest {
 
         return StatementStream(
             source = TokenSource(lexer::tokens),
-            parser = StatementParser(Parser::parse),
+            parser = StatementParser(Parser(StatementSyntaxes.DEFAULT)::parse),
         )
     }
 

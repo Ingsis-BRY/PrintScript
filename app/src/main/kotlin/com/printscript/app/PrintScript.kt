@@ -22,7 +22,7 @@ import com.printscript.linter.config.LintConfig
 import com.printscript.linter.config.identifier.IdentifierStyle
 import com.printscript.linter.report.LintFinding
 import com.printscript.parser.Parser
-import com.printscript.pipeline.StatementParser
+import com.printscript.parser.syntax.StatementSyntaxes
 import com.printscript.pipeline.StatementStream
 import com.printscript.pipeline.TokenSource
 import com.printscript.report.ErrorRenderer
@@ -60,7 +60,7 @@ class PrintScript(
             stream =
                 StatementStream(
                     source = LexerTokens(lexer),
-                    parser = ParserStatements,
+                    parser = Parser(StatementSyntaxes.DEFAULT)::parse,
                 ),
         )
     }
@@ -107,10 +107,6 @@ private class LexerTokens(
     private val lexer: Lexer,
 ) : TokenSource {
     override fun tokens(): Sequence<Result<Token>> = lexer.tokens()
-}
-
-private object ParserStatements : StatementParser {
-    override fun parse(tokens: List<Token>): Result<Statement> = Parser.parse(tokens)
 }
 
 private class InterpreterProgram(

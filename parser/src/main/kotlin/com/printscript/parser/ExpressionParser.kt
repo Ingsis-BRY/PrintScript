@@ -6,6 +6,7 @@ import com.printscript.common.Position
 import com.printscript.language.NumberCodec
 import com.printscript.parser.ParsingSupport.unexpectedEndOfExpression
 import com.printscript.parser.ParsingSupport.unexpectedToken
+import com.printscript.parser.syntax.Expressions
 import com.printscript.report.Diagnostic
 import com.printscript.report.Failure
 import com.printscript.report.Result
@@ -17,8 +18,8 @@ import com.printscript.token.Token
 
 internal class ExpressionParser(
     private val cursor: TokenCursor,
-) {
-    fun parse(): Result<Expression> = parseExpression(cursor, 0)
+) : Expressions {
+    override fun parse(): Result<Expression> = parseExpression(cursor, 0)
 
     /**
      * parses an expression while respecting the minimum operator precedence
