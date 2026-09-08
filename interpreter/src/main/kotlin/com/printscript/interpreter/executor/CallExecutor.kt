@@ -21,7 +21,7 @@ class CallExecutor(
                     ?: return@narrow Failure(Diagnostic.UnknownFunction(call.callee, call.span))
 
             context.evaluate(call.argument).flatMap { argument ->
-                builtin.call(argument, call.span, context)
+                builtin.call(argument, context)
             }
         }
 }

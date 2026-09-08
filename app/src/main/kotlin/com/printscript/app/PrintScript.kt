@@ -29,7 +29,6 @@ import com.printscript.pipeline.TokenSource
 import com.printscript.report.ErrorRenderer
 import com.printscript.report.Result
 import com.printscript.report.Success
-import com.printscript.token.Token
 import java.io.Reader
 import java.nio.file.Files
 import java.nio.file.Path
@@ -60,7 +59,7 @@ class PrintScript(
             reader = reader,
             stream =
                 StatementStream(
-                    source = LexerTokens(lexer),
+                    source = lexer::tokens,
                     parser = Parser(StatementSyntaxes.DEFAULT)::parse,
                 ),
         )
@@ -80,7 +79,7 @@ class PrintScript(
         return StreamFormatting(
             reader = reader,
             formatter = Formatter(settings),
-            tokens = LexerTokens(lexer),
+            tokens = lexer::tokens,
             out = formatted,
         )
     }
@@ -102,12 +101,6 @@ class PrintScript(
 
         fun supports(version: String): Boolean = version == DEFAULT_VERSION
     }
-}
-
-private class LexerTokens(
-    private val lexer: Lexer,
-) : TokenSource {
-    override fun tokens(): Sequence<Result<Token>> = lexer.tokens()
 }
 
 private class InterpreterProgram(

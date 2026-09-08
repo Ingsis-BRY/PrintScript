@@ -241,4 +241,12 @@ class ErrorRendererTest {
             renderer.render(Diagnostic.DivisionByZero(span)),
         )
     }
+
+    @Test
+    fun `renders an unsupported statement`() {
+        assertEquals(
+            "(2:9)-(2:14) Unsupported statement.",
+            renderer.render(Diagnostic.UnsupportedStatement(span)),
+        )
+    }
 }

@@ -128,3 +128,23 @@ ClassCastException: la primera invariante vale tambien para el codigo que hace d
 Descartado: hacer publico ParsingSupport para que se puedan escribir sintaxis desde otro modulo.
 Congelaria los helpers como API sin un consumidor real. Las sintaxis viven en :parser igual que
 los recognizers viven en :lexer.
+
+ParsingContext y ExecutionContext son la excepcion a la regla del parrafo de arriba, y conviene
+decir por que antes de que la encuentren. Las dos tienen una sola implementacion, asi que por el
+Reused Abstractions Principle no deberian existir; la razon por la que existen igual no es abstraer
+sino romper un ciclo *adentro* del modulo. Una sintaxis necesita evaluar expresiones y un executor
+necesita el Environment, pero si los nombraran directo (ExpressionParser, Interpreter) el registro
+dependeria de su propio despachador, que es quien construye el registro. El contexto corta eso.
+La contra honesta: son interfaces de contexto, no declaraciones de necesidad, y una interfaz de
+contexto tiende a crecer hasta ser un god object. Por eso las dos estan capadas a lo minimo -
+ParsingContext expone dos miembros, ExecutionContext tres - y las implementa una inner class
+privada del despachador, no el despachador mismo, para no volver publico lo que era privado.
+Se paga tambien que Environment quede alcanzable a traves de ExecutionContext; se acepta porque los
+tres executors necesitan la API completa de Environment igual, y no habia forma de darles menos.
+
+El registro se prueba en los dos sentidos, no solo en el feliz. StatementExecutorsTest verifica que
+el catalogo cubra todo el sealed hierarchy, y UnsupportedStatementTest verifica los dos caminos de
+fallo que el registro estrena: un statement que nadie reclama, y un executor al que le entregan una
+sentencia ajena. El segundo es el que sostiene la promesa de que narrow devuelve un Diagnostic en
+vez de tirar ClassCastException - se comprobo rompiendolo a proposito, con un cast inseguro, y el
+test falla con ClassCastException como corresponde.

@@ -11,8 +11,8 @@ import com.printscript.report.Success
 import com.printscript.report.flatMap
 
 /**
-* executes one statement at a time: evaluates expressions, updates the
-* [Environment] and emits `println` output. holds the only mutable state,
+* executes one statement at a time: picks the executor that claims the
+* statement and hands it the [ExecutionContext]. holds the only mutable state,
 * the environment, on purpose.
 */
 class Interpreter(

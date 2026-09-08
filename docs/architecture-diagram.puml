@@ -17,6 +17,8 @@ package "PrintScript" {
     [parser]      <<modulo>>
     [interpreter] <<modulo>>
     [pipeline]    <<modulo>>
+    [formatter]   <<modulo>>
+    [linter]      <<modulo>>
     [cli]         <<modulo>>
     [app]         <<modulo>>
 }
@@ -45,6 +47,18 @@ note right of [pipeline]
   Declara TokenSource y StatementParser,
   asi que NO depende de lexer ni de parser:
   las interfaces viven en el consumidor.
+end note
+
+note right of [formatter]
+  Reescribe el fuente token por token
+  segun un archivo de reglas JSON.
+  Trabaja sobre tokens, no sobre el AST.
+end note
+
+note right of [linter]
+  Recorre el AST y reporta incumplimientos
+  de convencion con su posicion exacta.
+  Las reglas se configuran por JSON.
 end note
 
 note right of [cli]
@@ -89,9 +103,14 @@ end note
 [pipeline]    --> [ast]
 [pipeline]    --> [report]
 
+[formatter]   --> [token]
+[formatter]   --> [report]
+
+[linter]      --> [common]
+[linter]      --> [ast]
+
 [cli]         --> [common]
 [cli]         --> [ast]
-[cli]         --> [pipeline]
 [cli]         --> [report]
 
 ' el unico modulo que nombra implementaciones concretas
@@ -101,6 +120,8 @@ end note
 [app]         --> [lexer]
 [app]         --> [parser]
 [app]         --> [interpreter]
+[app]         --> [formatter]
+[app]         --> [linter]
 
 @enduml
 
@@ -389,11 +410,12 @@ package parser {
 
     interface StatementSyntax {
         +matches(token: Token): Boolean
-        +parse(cursor: TokenCursor, expressions: Expressions): Result<Statement>
+        +parse(context: ParsingContext): Result<Statement>
     }
 
-    interface Expressions <<fun>> {
-        +parse(): Result<Expression>
+    interface ParsingContext {
+        +cursor: TokenCursor
+        +parseExpression(): Result<Expression>
     }
 
     class VariableDeclarationSyntax <<object>> implements StatementSyntax
@@ -404,7 +426,12 @@ package parser {
         +DEFAULT: List<StatementSyntax>
     }
 
-    class ExpressionParser implements Expressions
+    class StatementParser {
+        -syntaxes: List<StatementSyntax>
+        +parse(): Result<Statement>
+    }
+
+    class ExpressionParser
 
     note bottom of StatementSyntaxes
       mismo desempate que el lexer: si dos sintaxis
@@ -567,11 +594,20 @@ package cli {
 ' ------------------------------------------------------------
 package app {
 
-    class Main <<composition root>> {
+    class PrintScript <<composition root>> {
+        +cli(): Cli
+        +supports(version: String): Boolean
+    }
+
+    class PrintScriptCommand {
+        +call(): Int
+    }
+
+    class Main {
         +main(args: Array<String>)
     }
 
-    note bottom of Main
+    note bottom of PrintScript
       Pure DI: arma el grafo a mano y es el unico
       que nombra clases concretas. Lo que depende de
       un valor de runtime entra como factory:
@@ -579,7 +615,12 @@ package app {
       y el Program (estado vacio por corrida).
       Satisface TokenSource, StatementParser y Program
       con referencias a metodo, sin clases adaptadoras.
+      PrintScriptCommand solo parsea argv y traduce
+      codigos de salida; Main solo hace exitProcess.
     end note
+
+    Main ..> PrintScriptCommand : delega argv
+    PrintScriptCommand ..> PrintScript : construye
 }
 
 ' ------------------------------------------------------------
@@ -592,9 +633,11 @@ Lexer ..> Token : construye
 TokenRecognizers ..> TokenRecognizer : lista por prioridad
 Parser o--> StatementSyntax
 StatementSyntaxes ..> StatementSyntax : lista por prioridad
-StatementSyntax ..> Expressions : delega expresiones
+StatementSyntax ..> ParsingContext : cursor y expresiones
+StatementParser +-- ParsingContext : lo implementa una inner class privada
+StatementParser o--> ExpressionParser
 Interpreter o--> StatementExecutor
-Interpreter ..|> ExecutionContext
+Interpreter +-- ExecutionContext : lo implementa una inner class privada
 StatementExecutors ..> StatementExecutor : lista
 CallExecutor o--> Builtin
 Builtins ..> Builtin : registro por nombre
@@ -630,14 +673,14 @@ Cli ..> StatementStream : consume
 Cli --> ErrorRenderer
 Cli *--> ProgressPrinter
 
-Main ..> Cli : construye
-Main ..> Lexer : construye
-Main ..> StatementStream : construye
-Main ..> Interpreter : construye
-Main ..> ConsoleOutput : construye
-Main ..> TokenSource : Lexer::tokens
-Main ..> StatementParser : Parser(StatementSyntaxes.DEFAULT)::parse
-Main ..> Program : Interpreter::execute
+PrintScript ..> Cli : construye
+PrintScript ..> Lexer : construye
+PrintScript ..> StatementStream : construye
+PrintScript ..> Interpreter : construye
+PrintScript ..> ConsoleOutput : construye
+PrintScript ..> TokenSource : Lexer::tokens
+PrintScript ..> StatementParser : Parser(StatementSyntaxes.DEFAULT)::parse
+PrintScript ..> Program : Interpreter::execute
 
 Lexer ..> Result : devuelve
 Parser ..> Result : devuelve

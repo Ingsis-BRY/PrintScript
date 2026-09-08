@@ -1,8 +1,10 @@
 package com.printscript.parser
 
+import com.printscript.ast.Expression
 import com.printscript.ast.Statement
 import com.printscript.parser.ParsingSupport.unexpectedEndOfStatement
 import com.printscript.parser.ParsingSupport.unexpectedToken
+import com.printscript.parser.syntax.ParsingContext
 import com.printscript.parser.syntax.StatementSyntax
 import com.printscript.report.Result
 
@@ -11,6 +13,7 @@ internal class StatementParser(
     private val syntaxes: List<StatementSyntax>,
 ) {
     private val expressionParser = ExpressionParser(cursor)
+    private val context = Context()
 
     fun parse(): Result<Statement> {
         val token =
@@ -21,6 +24,13 @@ internal class StatementParser(
             syntaxes.firstOrNull { it.matches(token) }
                 ?: return unexpectedToken(token)
 
-        return syntax.parse(cursor, expressionParser)
+        return syntax.parse(context)
+    }
+
+    private inner class Context : ParsingContext {
+        override val cursor: TokenCursor
+            get() = this@StatementParser.cursor
+
+        override fun parseExpression(): Result<Expression> = expressionParser.parse()
     }
 }

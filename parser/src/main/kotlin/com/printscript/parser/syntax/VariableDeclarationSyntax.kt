@@ -7,7 +7,6 @@ import com.printscript.parser.ParsingSupport.parseIdentifier
 import com.printscript.parser.ParsingSupport.parseLet
 import com.printscript.parser.ParsingSupport.parseSemicolon
 import com.printscript.parser.ParsingSupport.parseType
-import com.printscript.parser.TokenCursor
 import com.printscript.report.Result
 import com.printscript.report.Success
 import com.printscript.report.flatMap
@@ -17,15 +16,14 @@ import com.printscript.token.Token
 object VariableDeclarationSyntax : StatementSyntax {
     override fun matches(token: Token): Boolean = token is Token.LetToken
 
-    override fun parse(
-        cursor: TokenCursor,
-        expressions: Expressions,
-    ): Result<Statement> =
-        parseLet(cursor).flatMap { letToken ->
+    override fun parse(context: ParsingContext): Result<Statement> {
+        val cursor = context.cursor
+
+        return parseLet(cursor).flatMap { letToken ->
             parseIdentifier(cursor).flatMap { nameToken ->
                 parseColon(cursor).flatMap {
                     parseType(cursor).flatMap { declaredType ->
-                        parseOptionalInitializer(cursor, expressions).flatMap { initializer ->
+                        parseOptionalInitializer(context).flatMap { initializer ->
                             parseSemicolon(cursor).map { semicolon ->
                                 Statement.VariableDeclaration(
                                     name = nameToken.lexeme,
@@ -40,17 +38,15 @@ object VariableDeclarationSyntax : StatementSyntax {
                 }
             }
         }
+    }
 
-    private fun parseOptionalInitializer(
-        cursor: TokenCursor,
-        expressions: Expressions,
-    ): Result<Expression?> {
-        if (cursor.peek() !is Token.AssignToken) {
+    private fun parseOptionalInitializer(context: ParsingContext): Result<Expression?> {
+        if (context.cursor.peek() !is Token.AssignToken) {
             return Success(null)
         }
 
-        cursor.consume()
+        context.cursor.consume()
 
-        return expressions.parse()
+        return context.parseExpression()
     }
 }

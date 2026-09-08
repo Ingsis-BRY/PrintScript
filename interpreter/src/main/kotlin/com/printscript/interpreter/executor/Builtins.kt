@@ -7,7 +7,7 @@ object Builtins {
     val DEFAULT: Map<String, Builtin> =
         mapOf(
             "println" to
-                Builtin { argument, _, context ->
+                Builtin { argument, context ->
                     context.emit(render(argument))
                     Success(Unit)
                 },
