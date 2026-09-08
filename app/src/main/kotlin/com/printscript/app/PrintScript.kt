@@ -18,6 +18,7 @@ import com.printscript.pipeline.StatementStream
 import com.printscript.pipeline.TokenSource
 import com.printscript.report.ErrorRenderer
 import com.printscript.report.Result
+import com.printscript.token.Token
 import java.io.Reader
 import java.nio.file.Files
 import java.nio.file.Path
@@ -64,8 +65,8 @@ class PrintScript(
             reader = reader,
             stream =
                 StatementStream(
-                    source = TokenSource(lexer::tokens),
-                    parser = StatementParser(Parser::parse),
+                    source = LexerTokens(lexer),
+                    parser = ParserStatements,
                 ),
         )
     }
@@ -77,7 +78,7 @@ class PrintScript(
     private fun newProgram(): Program {
         val interpreter = Interpreter(Environment(), output, ValueOps())
 
-        return Program(interpreter::execute)
+        return InterpreterProgram(interpreter)
     }
 
     companion object {
@@ -94,6 +95,37 @@ class PrintScript(
          */
         fun supports(version: String): Boolean = version == DEFAULT_VERSION
     }
+}
+
+/**
+ * Los tres adapters de abajo conectan cada componente con lo que su consumidor
+ * declaro que necesita.
+ *
+ * Viven aca porque el root es el unico modulo que ve las dos puntas: :pipeline
+ * no conoce a :lexer ni a :parser, y :cli no conoce a :interpreter. Como los
+ * submodulos son obligatorios, un modulo no puede nombrar las clases que
+ * consume; declara la interfaz y el root la satisface.
+ *
+ * Son clases con nombre y no lambdas: asi hay una declaracion explicita de que
+ * LexerTokens es un TokenSource, y el compilador la verifica. Con una referencia
+ * a metodo alcanzaba, pero solo porque la firma coincidia - nada decia que Lexer
+ * cumpliera el contrato.
+ */
+private class LexerTokens(
+    private val lexer: Lexer,
+) : TokenSource {
+    override fun tokens(): Sequence<Result<Token>> = lexer.tokens()
+}
+
+/** Parser es un object, asi que su adapter tambien puede serlo */
+private object ParserStatements : StatementParser {
+    override fun parse(tokens: List<Token>): Result<Statement> = Parser.parse(tokens)
+}
+
+private class InterpreterProgram(
+    private val interpreter: Interpreter,
+) : Program {
+    override fun execute(statement: Statement): Result<Unit> = interpreter.execute(statement)
 }
 
 /**
