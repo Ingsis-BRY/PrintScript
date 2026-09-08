@@ -12,10 +12,11 @@ import kotlin.test.assertTrue
 class PrintScriptCommandTest {
     private class Run {
         val output = CollectingOutput()
+        val formatted = StringBuilder()
         val errors = StringBuilder()
         val usage = StringWriter()
 
-        private val command = PrintScriptCommand(output, errors)
+        private val command = PrintScriptCommand(output, formatted, errors)
 
         fun execute(vararg args: String): Int =
             CommandLine(command)
@@ -147,5 +148,117 @@ class PrintScriptCommandTest {
         assertEquals(CommandLine.ExitCode.OK, code)
         assertContains(run.usage.toString(), "printscript")
         assertContains(run.usage.toString(), "OPERATION")
+    }
+
+    @Test
+    fun `formatting writes the rewritten source and exits with zero`() {
+        val run = Run()
+        val config = configFile("""{ "mandatory-single-space-separation": true }""")
+
+        val code =
+            run.execute(
+                "formatting",
+                sourceFile("let a:number=1;").toString(),
+                "--config",
+                config.toString(),
+            )
+
+        assertEquals(CommandLine.ExitCode.OK, code)
+        assertEquals("let a : number = 1;", run.formatted.toString())
+    }
+
+    @Test
+    fun `formatting accepts the short form of the config option`() {
+        val run = Run()
+        val config = configFile("""{ "enforce-spacing-around-equals": true }""")
+
+        val code =
+            run.execute(
+                "formatting",
+                sourceFile("let a: number=1;").toString(),
+                "-c",
+                config.toString(),
+            )
+
+        assertEquals(CommandLine.ExitCode.OK, code)
+        assertEquals("let a: number = 1;", run.formatted.toString())
+    }
+
+    @Test
+    fun `formatting without a config file is a usage error`() {
+        val run = Run()
+
+        val code = run.execute("formatting", sourceFile("let a: number = 1;").toString())
+
+        assertEquals(CommandLine.ExitCode.USAGE, code)
+        assertContains(run.errors.toString(), "--config")
+        assertTrue(run.formatted.isEmpty())
+    }
+
+    @Test
+    fun `a config file that does not exist is a usage error`() {
+        val run = Run()
+
+        val code =
+            run.execute(
+                "formatting",
+                sourceFile("let a: number = 1;").toString(),
+                "--config",
+                "no-such-config.json",
+            )
+
+        assertEquals(CommandLine.ExitCode.USAGE, code)
+        assertContains(run.errors.toString(), "could not be read")
+    }
+
+    @Test
+    fun `a setting outside its range is a usage error`() {
+        val run = Run()
+        val config = configFile("""{ "line-breaks-after-println": 9 }""")
+
+        val code =
+            run.execute(
+                "formatting",
+                sourceFile("println(1);").toString(),
+                "--config",
+                config.toString(),
+            )
+
+        assertEquals(CommandLine.ExitCode.USAGE, code)
+        assertContains(run.errors.toString(), "between 0 and 2")
+    }
+
+    @Test
+    fun `formatting a source with a lexical error exits with the software code`() {
+        val run = Run()
+        val config = configFile("{}")
+
+        val code =
+            run.execute(
+                "formatting",
+                sourceFile("let a = @;").toString(),
+                "--config",
+                config.toString(),
+            )
+
+        assertEquals(CommandLine.ExitCode.SOFTWARE, code)
+        assertContains(run.errors.toString(), "Unexpected character '@'.")
+    }
+
+    @Test
+    fun `the config option is ignored by the operations that do not need it`() {
+        val run = Run()
+        val config = configFile("""{ "line-breaks-after-println": 9 }""")
+
+        val code =
+            run.execute(
+                "execution",
+                sourceFile("println(1);").toString(),
+                "--config",
+                config.toString(),
+            )
+
+        assertEquals(CommandLine.ExitCode.OK, code)
+        assertEquals(listOf("1"), run.output.lines())
     }
 }

@@ -5,11 +5,14 @@ import picocli.CommandLine
 import kotlin.system.exitProcess
 
 fun main(args: Array<String>) {
-    val command = PrintScriptCommand(ConsoleOutput(), System.err)
+    val command = PrintScriptCommand(ConsoleOutput(), System.out, System.err)
 
-    exitProcess(
+    val code =
         CommandLine(command)
             .setCaseInsensitiveEnumValuesAllowed(true)
-            .execute(*args),
-    )
+            .execute(*args)
+
+    System.out.flush()
+
+    exitProcess(code)
 }

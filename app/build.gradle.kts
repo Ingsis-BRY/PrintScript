@@ -9,6 +9,7 @@ kotlin {
 
 dependencies {
     implementation(project(":cli"))
+    implementation(project(":formatter"))
     implementation(project(":pipeline"))
     implementation(project(":lexer"))
     implementation(project(":parser"))
