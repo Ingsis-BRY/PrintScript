@@ -6,7 +6,7 @@ import com.printscript.linter.report.LintFinding
 import com.printscript.linter.report.LintReport
 import com.printscript.linter.rules.LintRule
 import com.printscript.linter.rules.builtin.BuiltinArgumentRule
-import com.printscript.linter.rules.identifier.IdentifierNamingRule
+import com.printscript.linter.rules.identifier.IdentifierFormatingRule
 
 /**
  * Facade for the linting process.
@@ -19,15 +19,15 @@ class Linter(
 ) {
     private val rules: List<LintRule> =
         listOf(
-            IdentifierNamingRule(config.identifierNaming),
+            IdentifierFormatingRule(config.identifierFormat),
             BuiltinArgumentRule(
                 builtinName = "println",
-                config = config.println,
+                enabled = config.mandatoryVariableOrLiteralInPrintln,
                 invalidFinding = LintFinding::InvalidPrintlnArgument,
             ),
             BuiltinArgumentRule(
                 builtinName = "readInput",
-                config = config.readInput,
+                enabled = config.mandatoryVariableOrLiteralInReadInput,
                 invalidFinding = LintFinding::InvalidReadInputArgument,
             ),
         )

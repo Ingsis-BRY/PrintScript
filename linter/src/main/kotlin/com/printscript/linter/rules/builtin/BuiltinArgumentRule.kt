@@ -3,18 +3,17 @@ package com.printscript.linter.rules.builtin
 import com.printscript.ast.Expression
 import com.printscript.ast.Statement
 import com.printscript.common.Span
-import com.printscript.linter.config.builtin.BuiltinConfig
 import com.printscript.linter.report.LintFinding
 import com.printscript.linter.report.LintNode
 import com.printscript.linter.rules.LintRule
 
 class BuiltinArgumentRule(
     private val builtinName: String,
-    private val config: BuiltinConfig,
+    private val enabled: Boolean,
     private val invalidFinding: (Span) -> LintFinding,
 ) : LintRule {
     override fun check(node: LintNode): List<LintFinding> {
-        if (!config.enabled || node !is LintNode.Statement) {
+        if (!enabled || node !is LintNode.Statement) {
             return emptyList()
         }
 

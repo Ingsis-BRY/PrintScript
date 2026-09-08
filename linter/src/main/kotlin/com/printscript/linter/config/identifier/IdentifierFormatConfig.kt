@@ -1,6 +1,6 @@
 package com.printscript.linter.config.identifier
 
-data class IdentifierNamingConfig(
-    val enabled: Boolean = true,
+data class IdentifierFormatConfig(
+    val enabled: Boolean = false,
     val style: IdentifierStyle = IdentifierStyle.CAMEL_CASE,
 )

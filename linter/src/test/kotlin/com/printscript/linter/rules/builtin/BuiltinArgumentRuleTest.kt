@@ -5,7 +5,6 @@ import com.printscript.ast.Expression
 import com.printscript.ast.Statement
 import com.printscript.common.Position
 import com.printscript.common.Span
-import com.printscript.linter.config.builtin.BuiltinConfig
 import com.printscript.linter.report.LintFinding
 import com.printscript.linter.report.LintNode
 import kotlin.test.Test
@@ -134,7 +133,7 @@ class BuiltinArgumentRuleTest {
         val rule =
             BuiltinArgumentRule(
                 builtinName = "readInput",
-                config = BuiltinConfig(enabled = false),
+                enabled = false,
                 invalidFinding = LintFinding::InvalidReadInputArgument,
             )
 
@@ -151,14 +150,14 @@ class BuiltinArgumentRuleTest {
     private fun printlnRule() =
         BuiltinArgumentRule(
             builtinName = "println",
-            config = BuiltinConfig(),
+            enabled = true,
             invalidFinding = LintFinding::InvalidPrintlnArgument,
         )
 
     private fun readInputRule() =
         BuiltinArgumentRule(
             builtinName = "readInput",
-            config = BuiltinConfig(),
+            enabled = true,
             invalidFinding = LintFinding::InvalidReadInputArgument,
         )
 

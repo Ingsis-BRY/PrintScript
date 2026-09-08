@@ -3,13 +3,13 @@ package com.printscript.linter.rules.identifier
 import com.printscript.ast.Expression
 import com.printscript.ast.Statement
 import com.printscript.common.Span
-import com.printscript.linter.config.identifier.IdentifierNamingConfig
+import com.printscript.linter.config.identifier.IdentifierFormatConfig
 import com.printscript.linter.report.LintFinding
 import com.printscript.linter.report.LintNode
 import com.printscript.linter.rules.LintRule
 
-class IdentifierNamingRule(
-    private val config: IdentifierNamingConfig,
+class IdentifierFormatingRule(
+    private val config: IdentifierFormatConfig,
 ) : LintRule {
     private val validator = IdentifierValidator(config.style)
 

@@ -5,7 +5,7 @@ import com.printscript.ast.Statement
 import com.printscript.ast.Type
 import com.printscript.common.Position
 import com.printscript.common.Span
-import com.printscript.linter.config.identifier.IdentifierNamingConfig
+import com.printscript.linter.config.identifier.IdentifierFormatConfig
 import com.printscript.linter.config.identifier.IdentifierStyle
 import com.printscript.linter.report.LintFinding
 import com.printscript.linter.report.LintNode
@@ -13,7 +13,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-class IdentifierNamingRuleTest {
+class IdentifierFormatingRuleTest {
     @Test
     fun `accepts valid camel case variable declaration`() {
         val span = Span(Position(2, 4), Position(2, 14))
@@ -166,8 +166,8 @@ class IdentifierNamingRuleTest {
     fun `does nothing when rule is disabled`() {
         val span = Span(Position(23, 2), Position(23, 14))
         val rule =
-            IdentifierNamingRule(
-                IdentifierNamingConfig(
+            IdentifierFormatingRule(
+                IdentifierFormatConfig(
                     enabled = false,
                     style = IdentifierStyle.CAMEL_CASE,
                 ),
@@ -185,15 +185,17 @@ class IdentifierNamingRuleTest {
     }
 
     private fun camelCaseRule() =
-        IdentifierNamingRule(
-            IdentifierNamingConfig(
+        IdentifierFormatingRule(
+            IdentifierFormatConfig(
+                enabled = true,
                 style = IdentifierStyle.CAMEL_CASE,
             ),
         )
 
     private fun snakeCaseRule() =
-        IdentifierNamingRule(
-            IdentifierNamingConfig(
+        IdentifierFormatingRule(
+            IdentifierFormatConfig(
+                enabled = true,
                 style = IdentifierStyle.SNAKE_CASE,
             ),
         )
