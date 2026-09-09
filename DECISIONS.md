@@ -17,10 +17,11 @@ Las dos piezas que dependen de un valor de runtime entran como factories y no co
 el StatementStream necesita el Reader del archivo y es de un solo uso, y el Interpreter necesita
 un Environment vacio por corrida. Un composition root no puede construir lo que todavia no existe.
 
-No se inyecta todo. NumberCodec, OperatorRules, PrecedenceTable y Parser son stateless,
-deterministas y sin I/O: son dependencias estables y se siguen llamando directo como object.
-Se inyecta solo lo volatil: el I/O (OutputEmitter, SourceReader, los sinks de error y progreso)
-y el estado mutable (Environment). Inyectar lo estable agrega ceremonia sin comprar nada.
+No se inyecta todo. NumberCodec, OperatorRules y PrecedenceTable son stateless, deterministas y sin
+I/O: son dependencias estables y se siguen llamando directo como object.
+Se inyecta solo lo volatil: el I/O (OutputEmitter, SourceReader, los sinks de error y progreso),
+el estado mutable (Environment) y los catalogos que definen que entiende cada version del lenguaje
+(los recognizers, las sintaxis, los executors). Inyectar lo estable agrega ceremonia sin comprar nada.
 
 Descartado: un contenedor de DI (Koin, Dagger). A esta escala aporta reflexion, configuracion y
 errores en runtime en lugar de en compilacion; Pure DI se lee de arriba a abajo en un archivo y
@@ -96,3 +97,68 @@ La contra honesta: lee sus anotaciones por reflexion, y obliga a que los campos 
 y lateinit porque los asigna despues de construir. Eso convive con "el compilador verifica el grafo"
 porque lo que refleja es argv, en el borde del proceso, y no las dependencias entre modulos; pero es
 una tension real y conviene decirla antes de que la encuentren.
+
+Lo comun del build vive en convention plugins en buildSrc, no en un subprojects {} del root.
+Los 13 modulos repetian el mismo bloque de plugins, toolchain, dependencia de test y
+useJUnitPlatform; ahora declaran un id y sus dependencias, y nada mas. La diferencia real no es
+el ahorro de lineas: un subprojects {} configura hijos desde afuera, asi que hay que leer el root
+para saber que le pasa a un modulo, y no hay forma de que un modulo elija. Un plugin se aplica,
+y aplicarlo es una linea visible en el modulo. Por eso :app aplica kotlin-application y no
+kotlin-module: la diferencia entre una libreria y un ejecutable pasa a estar declarada.
+Descartado: un composite build con includeBuild("build-logic"), que es lo idiomatico a escala
+pero agrega un settings y un build entero para 13 modulos chicos. Descartado tambien dejar el
+subprojects {} y usar buildSrc solo para lo de los modulos: la configuracion quedaba partida en
+dos lugares, que era el problema original.
+
+El parser y el interprete despachan por registro, igual que el lexer. TokenRecognizers.DEFAULT ya
+era eso: agregar un token es un archivo nuevo y una entrada, nunca editar un recognizer. Ahora
+StatementSyntaxes.DEFAULT y StatementExecutors.DEFAULT tienen la misma forma, y el orden desempata
+igual - CallSyntax va antes que AssignmentSyntax porque las dos reclaman un IdentifierToken.
+En el parser el cambio no cuesta nada: el dispatch ya tenia un else, o sea que el conjunto de
+sentencias siempre fue abierto.
+En el interprete si cuesta. El when era exhaustivo sobre un sealed interface, asi que el compilador
+era el que avisaba que faltaba cubrir una sentencia nueva; el registro cambia ese aviso por uno en
+tiempo de test. Se paga a conciencia y se compensa con StatementExecutorsTest, que recorre
+Statement::class.sealedSubclasses y falla si alguna no esta cubierta - incluida la variante de que
+la sentencia sea tan nueva que el test no sepa construirla. Es el mismo trato que ya hace
+ErrorRenderer al reves: ahi se eligio que el compilador obligue, aca que obligue un test, porque lo
+que se compra es que agregar una sentencia deje de tocar codigo existente.
+Un executor que reciba una sentencia que no es la suya devuelve UnsupportedStatement y no tira
+ClassCastException: la primera invariante vale tambien para el codigo que hace de plumbing.
+Descartado: hacer publico ParsingSupport para que se puedan escribir sintaxis desde otro modulo.
+Congelaria los helpers como API sin un consumidor real. Las sintaxis viven en :parser igual que
+los recognizers viven en :lexer.
+
+ParsingContext y ExecutionContext son la excepcion a la regla del parrafo de arriba, y conviene
+decir por que antes de que la encuentren. Las dos tienen una sola implementacion, asi que por el
+Reused Abstractions Principle no deberian existir; la razon por la que existen igual no es abstraer
+sino romper un ciclo *adentro* del modulo. Una sintaxis necesita evaluar expresiones y un executor
+necesita el Environment, pero si los nombraran directo (ExpressionParser, Interpreter) el registro
+dependeria de su propio despachador, que es quien construye el registro. El contexto corta eso.
+La contra honesta: son interfaces de contexto, no declaraciones de necesidad, y una interfaz de
+contexto tiende a crecer hasta ser un god object. Por eso las dos estan capadas a lo minimo -
+ParsingContext expone dos miembros, ExecutionContext tres - y las implementa una inner class
+privada del despachador, no el despachador mismo, para no volver publico lo que era privado.
+Se paga tambien que Environment quede alcanzable a traves de ExecutionContext; se acepta porque los
+tres executors necesitan la API completa de Environment igual, y no habia forma de darles menos.
+
+El registro se prueba en los dos sentidos, no solo en el feliz. StatementExecutorsTest verifica que
+el catalogo cubra todo el sealed hierarchy, y UnsupportedStatementTest verifica los dos caminos de
+fallo que el registro estrena: un statement que nadie reclama, y un executor al que le entregan una
+sentencia ajena. El segundo es el que sostiene la promesa de que narrow devuelve un Diagnostic en
+vez de tirar ClassCastException - se comprobo rompiendolo a proposito, con un cast inseguro, y el
+test falla con ClassCastException como corresponde.
+
+Analyzing recorre sentencias adentro de Cli, igual que validation y execution, y no en un adapter
+aparte. Antes tenia su propio loop en el composition root, y ese loop se tragaba los Failure: el
+archivo con un error de sintaxis no reportaba nada y salia con codigo 0, en contra de la consigna.
+Compartir overStatements arregla las tres cosas de una: corta en el primer error, lo reporta por el
+renderer, y muestra el progreso del parseo. La leccion no es que faltaba un if - es que analyzing
+era la unica de las cuatro operaciones sin un test end to end, y no lo tenia porque escribia por un
+println de Kotlin en vez de por un sink inyectado. Lo no inyectable es lo no testeable.
+Los hallazgos ahora salen por FindingRenderer, en :linter, que es a LintFinding lo que ErrorRenderer
+es a Diagnostic: el unico lugar que abre la jerarquia y el unico que escribe prosa. Antes ese texto
+vivia suelto en PrintScript.kt, que es el composition root y no tendria que redactar nada.
+Cli declara Analyzer, la interfaz de lo que necesita - dame los hallazgos de esta sentencia - y no
+conoce :linter. El sink de stdout paso a llamarse out porque ahora lleva dos cosas: el fuente
+formateado y los hallazgos.

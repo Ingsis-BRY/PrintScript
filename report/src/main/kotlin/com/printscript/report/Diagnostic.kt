@@ -130,6 +130,10 @@ sealed interface Diagnostic {
     data class DivisionByZero(
         override val span: Span,
     ) : Diagnostic
+
+    data class UnsupportedStatement(
+        override val span: Span,
+    ) : Diagnostic
 }
 
 /**

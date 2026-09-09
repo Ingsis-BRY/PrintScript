@@ -1,7 +1,7 @@
 package com.printscript.app
 
 import com.printscript.ast.Statement
-import com.printscript.cli.Analyzing
+import com.printscript.cli.Analyzer
 import com.printscript.cli.Cli
 import com.printscript.cli.Formatting
 import com.printscript.cli.Program
@@ -14,28 +14,26 @@ import com.printscript.interpreter.Environment
 import com.printscript.interpreter.Interpreter
 import com.printscript.interpreter.OutputEmitter
 import com.printscript.interpreter.ValueOps
+import com.printscript.interpreter.executor.StatementExecutors
 import com.printscript.lexer.Lexer
 import com.printscript.lexer.StreamSourceReader
 import com.printscript.lexer.recognizer.TokenRecognizers
 import com.printscript.linter.Linter
 import com.printscript.linter.config.LintConfig
-import com.printscript.linter.config.identifier.IdentifierStyle
-import com.printscript.linter.report.LintFinding
+import com.printscript.linter.report.FindingRenderer
 import com.printscript.parser.Parser
-import com.printscript.pipeline.StatementParser
+import com.printscript.parser.syntax.StatementSyntaxes
 import com.printscript.pipeline.StatementStream
 import com.printscript.pipeline.TokenSource
 import com.printscript.report.ErrorRenderer
 import com.printscript.report.Result
-import com.printscript.report.Success
-import com.printscript.token.Token
 import java.io.Reader
 import java.nio.file.Files
 import java.nio.file.Path
 
 class PrintScript(
     private val output: OutputEmitter,
-    private val formatted: Appendable,
+    private val out: Appendable,
     private val progress: Appendable,
     private val errors: Appendable,
     private val config: Path?,
@@ -45,10 +43,11 @@ class PrintScript(
             newStatements = ::statementsIn,
             newProgram = ::newProgram,
             newFormatting = ::formattingIn,
-            newAnalyzing = ::analyzingIn,
+            newAnalyzer = ::newAnalyzer,
             renderer = ErrorRenderer(),
             progress = ProgressPrinter(progress),
             errors = errors,
+            findings = out,
         )
 
     private fun statementsIn(file: Path): StatementSource {
@@ -59,14 +58,14 @@ class PrintScript(
             reader = reader,
             stream =
                 StatementStream(
-                    source = LexerTokens(lexer),
-                    parser = ParserStatements,
+                    source = lexer::tokens,
+                    parser = Parser(StatementSyntaxes.DEFAULT)::parse,
                 ),
         )
     }
 
     private fun newProgram(): Program {
-        val interpreter = Interpreter(Environment(), output, ValueOps())
+        val interpreter = Interpreter(Environment(), output, ValueOps(), StatementExecutors.DEFAULT)
 
         return InterpreterProgram(interpreter)
     }
@@ -79,18 +78,22 @@ class PrintScript(
         return StreamFormatting(
             reader = reader,
             formatter = Formatter(settings),
-            tokens = LexerTokens(lexer),
-            out = formatted,
+            tokens = lexer::tokens,
+            out = out,
         )
     }
 
-    private fun analyzingIn(file: Path): Analyzing {
-        val settings = LintConfig.read(configFile())
+    private fun newAnalyzer(): Analyzer {
+        val linter = Linter(LintConfig.read(configFile()))
+        val renderer = FindingRenderer()
 
-        return StreamAnalyzing(
-            statements = statementsIn(file),
-            linter = Linter(settings),
-        )
+        return Analyzer { statement ->
+            linter
+                .lint(
+                    listOf(statement),
+                ).findings
+                .map(renderer::render)
+        }
     }
 
     private fun configFile(): Path =
@@ -101,16 +104,6 @@ class PrintScript(
 
         fun supports(version: String): Boolean = version == DEFAULT_VERSION
     }
-}
-
-private class LexerTokens(
-    private val lexer: Lexer,
-) : TokenSource {
-    override fun tokens(): Sequence<Result<Token>> = lexer.tokens()
-}
-
-private object ParserStatements : StatementParser {
-    override fun parse(tokens: List<Token>): Result<Statement> = Parser.parse(tokens)
 }
 
 private class InterpreterProgram(
@@ -139,53 +132,4 @@ private class StreamFormatting(
     override fun format(): Result<Unit> = formatter.format(tokens.tokens(), out)
 
     override fun close() = reader.close()
-}
-
-private class StreamAnalyzing(
-    private val statements: StatementSource,
-    private val linter: Linter,
-) : Analyzing {
-    override fun analyze(): Result<Unit> {
-        while (statements.hasNext()) {
-            val result = statements.next()
-
-            if (result is Success) {
-                linter
-                    .lint(listOf(result.value))
-                    .findings
-                    .forEach { println(formatFinding(it)) }
-            }
-        }
-
-        return Success(Unit)
-    }
-
-    override fun close() {
-        statements.close()
-    }
-
-    private fun formatFinding(finding: LintFinding): String {
-        val location =
-            "${finding.span.start.line}:${finding.span.start.column}"
-
-        return "$location ${message(finding)}"
-    }
-
-    private fun message(finding: LintFinding): String =
-        when (finding) {
-            is LintFinding.InvalidIdentifier ->
-                "Invalid identifier '${finding.name}': expected ${style(finding.expectedStyle)}."
-
-            is LintFinding.InvalidPrintlnArgument ->
-                "Invalid println argument: expected a variable or literal."
-
-            is LintFinding.InvalidReadInputArgument ->
-                "Invalid readInput argument: expected a variable or literal."
-        }
-
-    private fun style(style: IdentifierStyle): String =
-        when (style) {
-            IdentifierStyle.CAMEL_CASE -> "camel case"
-            IdentifierStyle.SNAKE_CASE -> "snake case"
-        }
 }

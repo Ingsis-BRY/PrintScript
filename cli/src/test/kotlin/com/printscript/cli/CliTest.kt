@@ -75,22 +75,14 @@ class CliTest {
         }
     }
 
-    private class RecordingAnalyzing(
-        private val result: Result<Unit>,
-    ) : Analyzing {
-        var closed = false
+    private class RecordingAnalyzer : Analyzer {
+        var seen = 0
             private set
 
-        var analyzed = false
-            private set
+        override fun findings(statement: Statement): List<String> {
+            seen++
 
-        override fun analyze(): Result<Unit> {
-            analyzed = true
-            return result
-        }
-
-        override fun close() {
-            closed = true
+            return listOf("finding for ${statement.start.line}")
         }
     }
 
@@ -98,13 +90,13 @@ class CliTest {
         results: List<Result<Statement>>,
         failAt: Int? = null,
         formatting: Result<Unit> = Success(Unit),
-        analyzing: Result<Unit> = Success(Unit),
     ) {
         val progress = StringBuilder()
         val errors = StringBuilder()
         val formatted = StringBuilder()
+        val findings = StringBuilder()
         val program = RecordingProgram(failAt, divisionByZero)
-        val analyzing = RecordingAnalyzing(analyzing)
+        val analyzer = RecordingAnalyzer()
         val statements = FakeStatements(results)
         val formatting = RecordingFormatting(formatting, formatted)
 
@@ -113,10 +105,11 @@ class CliTest {
                 newStatements = { statements },
                 newProgram = { program },
                 newFormatting = { this.formatting },
-                newAnalyzing = { this.analyzing },
+                newAnalyzer = { analyzer },
                 renderer = ErrorRenderer(),
                 progress = ProgressPrinter(progress),
                 errors = errors,
+                findings = findings,
             )
     }
 
@@ -261,27 +254,35 @@ class CliTest {
     }
 
     @Test
-    fun `analyzing runs the analyzer`() {
+    fun `analyzing asks the analyzer about every statement and writes its findings`() {
         val run = Run(succeeding(3))
 
         val result = run.cli.run(Operation.ANALYZING, anyFile)
 
         assertIs<Success<Unit>>(result)
-        assertTrue(run.analyzing.analyzed)
+        assertEquals(3, run.analyzer.seen)
+        assertEquals(
+            3,
+            run.findings
+                .toString()
+                .trim()
+                .lines()
+                .size,
+        )
     }
 
     @Test
-    fun `analyzing closes the analyzer when it succeeds`() {
+    fun `analyzing closes the statement source when it succeeds`() {
         val run = Run(succeeding(1))
 
         run.cli.run(Operation.ANALYZING, anyFile)
 
-        assertTrue(run.analyzing.closed)
+        assertTrue(run.statements.closed)
     }
 
     @Test
-    fun `a failure while analyzing reaches the renderer`() {
-        val run = Run(succeeding(1), analyzing = Failure(divisionByZero))
+    fun `analyzing stops at the first error and reports it`() {
+        val run = Run(listOf(Success(statement()), Failure(divisionByZero), Success(statement())))
 
         val result = run.cli.run(Operation.ANALYZING, anyFile)
 
@@ -290,6 +291,16 @@ class CliTest {
             "(1:1)-(1:1) Division by zero.",
             run.errors.toString().trim(),
         )
-        assertTrue(run.analyzing.closed)
+        assertEquals(1, run.analyzer.seen, "it must not analyze past the error")
+        assertTrue(run.statements.closed)
+    }
+
+    @Test
+    fun `analyzing reports progress like validation does`() {
+        val run = Run(succeeding(2))
+
+        run.cli.run(Operation.ANALYZING, anyFile)
+
+        assertTrue(run.progress.isNotEmpty(), "analyzing must show parsing progress too")
     }
 }

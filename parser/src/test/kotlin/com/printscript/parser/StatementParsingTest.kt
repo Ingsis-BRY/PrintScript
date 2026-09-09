@@ -5,8 +5,10 @@ import com.printscript.ast.Statement
 import com.printscript.ast.Type
 import com.printscript.common.Position
 import com.printscript.common.Span
+import com.printscript.parser.syntax.StatementSyntaxes
 import com.printscript.report.Diagnostic
 import com.printscript.report.Failure
+import com.printscript.report.Result
 import com.printscript.report.Success
 import com.printscript.report.SyntaxSymbol
 import com.printscript.token.Token
@@ -15,10 +17,13 @@ import kotlin.test.assertEquals
 import kotlin.test.assertIs
 
 class StatementParsingTest {
+    private fun parse(tokens: List<Token>): Result<Statement> =
+        Parser(StatementSyntaxes.DEFAULT).parse(tokens)
+
     @Test
     fun `should parse variable declaration with initializer`() {
         val result =
-            Parser.parse(
+            parse(
                 listOf(
                     let(2, 1),
                     identifier("x", 2, 5),
@@ -52,7 +57,7 @@ class StatementParsingTest {
     @Test
     fun `should parse variable declaration without initializer`() {
         val result =
-            Parser.parse(
+            parse(
                 listOf(
                     let(4, 1),
                     identifier("message", 4, 5),
@@ -79,7 +84,7 @@ class StatementParsingTest {
     @Test
     fun `should parse assignment`() {
         val result =
-            Parser.parse(
+            parse(
                 listOf(
                     identifier("x", 6, 1),
                     assign(6, 3),
@@ -109,7 +114,7 @@ class StatementParsingTest {
     @Test
     fun `should parse println statement`() {
         val result =
-            Parser.parse(
+            parse(
                 listOf(
                     identifier("println", 8, 1),
                     leftParen(8, 8),
@@ -140,7 +145,7 @@ class StatementParsingTest {
     @Test
     fun `should parse println with expression argument`() {
         val result =
-            Parser.parse(
+            parse(
                 listOf(
                     identifier("println", 10, 1),
                     leftParen(10, 8),
@@ -185,7 +190,7 @@ class StatementParsingTest {
     @Test
     fun `should return error when semicolon is missing`() {
         val result =
-            Parser.parse(
+            parse(
                 listOf(
                     identifier("x", 12, 1),
                     assign(12, 3),
@@ -208,7 +213,7 @@ class StatementParsingTest {
     @Test
     fun `should return error when declaration identifier is invalid`() {
         val result =
-            Parser.parse(
+            parse(
                 listOf(
                     let(14, 1),
                     number("5", 14, 5),
@@ -232,7 +237,7 @@ class StatementParsingTest {
     @Test
     fun `should return error for unknown type`() {
         val result =
-            Parser.parse(
+            parse(
                 listOf(
                     let(16, 1),
                     identifier("x", 16, 5),
@@ -256,7 +261,7 @@ class StatementParsingTest {
     @Test
     fun `should return error when assignment operator is missing`() {
         val result =
-            Parser.parse(
+            parse(
                 listOf(
                     identifier("x", 18, 1),
                     number("42", 18, 3),
@@ -278,7 +283,7 @@ class StatementParsingTest {
     @Test
     fun `should return error when println is missing opening parenthesis`() {
         val result =
-            Parser.parse(
+            parse(
                 listOf(
                     identifier("println", 20, 1),
                     number("42", 20, 9),

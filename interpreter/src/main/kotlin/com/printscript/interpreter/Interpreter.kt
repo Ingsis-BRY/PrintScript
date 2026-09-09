@@ -2,6 +2,8 @@ package com.printscript.interpreter
 
 import com.printscript.ast.Expression
 import com.printscript.ast.Statement
+import com.printscript.interpreter.executor.ExecutionContext
+import com.printscript.interpreter.executor.StatementExecutor
 import com.printscript.report.Diagnostic
 import com.printscript.report.Failure
 import com.printscript.report.Result
@@ -9,47 +11,24 @@ import com.printscript.report.Success
 import com.printscript.report.flatMap
 
 /**
-* executes one statement at a time: evaluates expressions, updates the
-* [Environment] and emits `println` output. holds the only mutable state,
+* executes one statement at a time: picks the executor that claims the
+* statement and hands it the [ExecutionContext]. holds the only mutable state,
 * the environment, on purpose.
 */
 class Interpreter(
     private val environment: Environment,
     private val output: OutputEmitter,
     private val valueOps: ValueOps,
+    private val executors: List<StatementExecutor>,
 ) {
-    fun execute(statement: Statement): Result<Unit> =
-        when (statement) {
-            is Statement.VariableDeclaration -> executeDeclaration(statement)
-            is Statement.Assignment -> executeAssignment(statement)
-            is Statement.CallStatement -> executeCall(statement)
-        }
+    private val context = Context()
 
-    private fun executeDeclaration(statement: Statement.VariableDeclaration): Result<Unit> =
-        environment.declare(statement.name, statement.declaredType, statement.span).flatMap {
-            val initializer =
-                statement.initializer
-                    ?: return@flatMap Success(Unit)
+    fun execute(statement: Statement): Result<Unit> {
+        val executor =
+            executors.firstOrNull { it.matches(statement) }
+                ?: return Failure(Diagnostic.UnsupportedStatement(statement.span))
 
-            evaluate(initializer).flatMap { value ->
-                environment.initialize(statement.name, value, statement.span)
-            }
-        }
-
-    private fun executeAssignment(statement: Statement.Assignment): Result<Unit> =
-        evaluate(statement.value).flatMap { value ->
-            environment.assign(statement.name, value, statement.span)
-        }
-
-    private fun executeCall(statement: Statement.CallStatement): Result<Unit> {
-        if (statement.callee != "println") {
-            return Failure(Diagnostic.UnknownFunction(statement.callee, statement.span))
-        }
-
-        return evaluate(statement.argument).flatMap { value ->
-            output.emit(render(value))
-            Success(Unit)
-        }
+        return executor.execute(statement, context)
     }
 
     private fun evaluate(expression: Expression): Result<Value> =
@@ -66,4 +45,14 @@ class Interpreter(
                 valueOps.apply(expression.operator, left, right, expression.span)
             }
         }
+
+    private inner class Context : ExecutionContext {
+        override val environment: Environment
+            get() = this@Interpreter.environment
+
+        override fun evaluate(expression: Expression): Result<Value> =
+            this@Interpreter.evaluate(expression)
+
+        override fun emit(line: String) = output.emit(line)
+    }
 }

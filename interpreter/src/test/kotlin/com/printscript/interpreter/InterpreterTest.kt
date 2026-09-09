@@ -5,6 +5,7 @@ import com.printscript.ast.Expression
 import com.printscript.ast.Statement
 import com.printscript.ast.Type
 import com.printscript.common.Position
+import com.printscript.interpreter.executor.StatementExecutors
 import com.printscript.report.Diagnostic
 import com.printscript.report.Failure
 import com.printscript.report.Result
@@ -45,7 +46,7 @@ class InterpreterTest {
     // test if any statement does not succeed
     private fun run(vararg statements: Statement): List<String> {
         val output = CollectingOutput()
-        val interpreter = Interpreter(Environment(), output, ValueOps())
+        val interpreter = Interpreter(Environment(), output, ValueOps(), StatementExecutors.DEFAULT)
 
         statements.forEach { statement ->
             assertIs<Success<Unit>>(interpreter.execute(statement))
@@ -105,7 +106,7 @@ class InterpreterTest {
     @Test
     fun `a declaration without initializer leaves the variable unassigned`() {
         val output = CollectingOutput()
-        val interpreter = Interpreter(Environment(), output, ValueOps())
+        val interpreter = Interpreter(Environment(), output, ValueOps(), StatementExecutors.DEFAULT)
 
         assertIs<Success<Unit>>(interpreter.execute(declare("x", Type.NumberType, null)))
 
@@ -115,7 +116,8 @@ class InterpreterTest {
 
     @Test
     fun `division by zero is a runtime error`() {
-        val interpreter = Interpreter(Environment(), CollectingOutput(), ValueOps())
+        val interpreter =
+            Interpreter(Environment(), CollectingOutput(), ValueOps(), StatementExecutors.DEFAULT)
 
         val declared = interpreter.execute(declare("a", Type.NumberType, number(1.0)))
         assertIs<Success<Unit>>(declared)
@@ -135,7 +137,8 @@ class InterpreterTest {
 
     @Test
     fun `referencing an undeclared variable is an error`() {
-        val interpreter = Interpreter(Environment(), CollectingOutput(), ValueOps())
+        val interpreter =
+            Interpreter(Environment(), CollectingOutput(), ValueOps(), StatementExecutors.DEFAULT)
 
         val result = interpreter.execute(println(reference("missing")))
 
@@ -167,7 +170,8 @@ class InterpreterTest {
 
     @Test
     fun `calling an unknown function is an error`() {
-        val interpreter = Interpreter(Environment(), CollectingOutput(), ValueOps())
+        val interpreter =
+            Interpreter(Environment(), CollectingOutput(), ValueOps(), StatementExecutors.DEFAULT)
 
         val result: Result<Unit> =
             interpreter.execute(Statement.CallStatement("print", number(1.0), at, at))

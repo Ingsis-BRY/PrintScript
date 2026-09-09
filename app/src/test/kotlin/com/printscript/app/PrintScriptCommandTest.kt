@@ -12,11 +12,11 @@ import kotlin.test.assertTrue
 class PrintScriptCommandTest {
     private class Run {
         val output = CollectingOutput()
-        val formatted = StringBuilder()
+        val out = StringBuilder()
         val errors = StringBuilder()
         val usage = StringWriter()
 
-        private val command = PrintScriptCommand(output, formatted, errors)
+        private val command = PrintScriptCommand(output, out, errors)
 
         fun execute(vararg args: String): Int =
             CommandLine(command)
@@ -164,7 +164,7 @@ class PrintScriptCommandTest {
             )
 
         assertEquals(CommandLine.ExitCode.OK, code)
-        assertEquals("let a : number = 1;", run.formatted.toString())
+        assertEquals("let a : number = 1;", run.out.toString())
     }
 
     @Test
@@ -181,7 +181,7 @@ class PrintScriptCommandTest {
             )
 
         assertEquals(CommandLine.ExitCode.OK, code)
-        assertEquals("let a: number = 1;", run.formatted.toString())
+        assertEquals("let a: number = 1;", run.out.toString())
     }
 
     @Test
@@ -192,7 +192,7 @@ class PrintScriptCommandTest {
 
         assertEquals(CommandLine.ExitCode.USAGE, code)
         assertContains(run.errors.toString(), "--config")
-        assertTrue(run.formatted.isEmpty())
+        assertTrue(run.out.isEmpty())
     }
 
     @Test

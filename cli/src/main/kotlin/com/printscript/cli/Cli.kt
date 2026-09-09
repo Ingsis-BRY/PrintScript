@@ -24,10 +24,11 @@ class Cli(
     private val newStatements: (Path) -> StatementSource,
     private val newProgram: () -> Program,
     private val newFormatting: (Path) -> Formatting,
-    private val newAnalyzing: (Path) -> Analyzing,
+    private val newAnalyzer: () -> Analyzer,
     private val renderer: ErrorRenderer,
     private val progress: ProgressPrinter,
     private val errors: Appendable,
+    private val findings: Appendable,
 ) {
     fun run(
         operation: Operation,
@@ -37,7 +38,7 @@ class Cli(
             Operation.VALIDATION -> overStatements(file, ::validate)
             Operation.EXECUTION -> overStatements(file, ::execute)
             Operation.FORMATTING -> format(file)
-            Operation.ANALYZING -> analyze(file)
+            Operation.ANALYZING -> overStatements(file, ::analyze)
         }
 
     private fun overStatements(
@@ -83,10 +84,22 @@ class Cli(
         return Success(Unit)
     }
 
-    private fun analyze(file: Path): Result<Unit> {
-        val result = newAnalyzing(file).use { it.analyze() }
+    private fun analyze(statements: StatementSource): Result<Unit> {
+        val analyzer = newAnalyzer()
 
-        return if (result is Failure) report(result) else result
+        while (statements.hasNext()) {
+            when (val parsed = statements.next()) {
+                is Failure -> return report(parsed)
+
+                is Success -> {
+                    progress.statementParsed(parsed.value.start)
+
+                    analyzer.findings(parsed.value).forEach { findings.appendLine(it) }
+                }
+            }
+        }
+
+        return Success(Unit)
     }
 
     private fun report(failure: Failure): Failure {

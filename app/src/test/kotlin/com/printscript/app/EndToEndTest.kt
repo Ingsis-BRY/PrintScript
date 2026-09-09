@@ -204,8 +204,61 @@ class EndToEndTest {
 
         assertIs<Success<Unit>>(run.cli.run(Operation.FORMATTING, sourceFile(source)))
 
-        return run.formatted.toString()
+        return run.out.toString()
     }
+
+    // Analyzing
+
+    private val camelCase = """{ "identifier_format": { "enabled": true, "style": "camelCase" } }"""
+
+    private fun analyze(
+        source: String,
+        settings: String = camelCase,
+    ): Run {
+        val run = Run(config = configFile(settings))
+
+        run.cli.run(Operation.ANALYZING, sourceFile(source))
+
+        return run
+    }
+
+    @Test
+    fun `analyzing reports a rule violation with a span, in the same format as errors`() {
+        val run = analyze("let BadName: number = 5;")
+
+        assertEquals(
+            "(1:1)-(1:24) Invalid identifier 'BadName': expected camel case.",
+            run.out.toString().trim(),
+        )
+    }
+
+    @Test
+    fun `analyzing a clean file reports nothing and succeeds`() {
+        val run = analyze("let goodName: number = 5;")
+
+        assertEquals("", run.out.toString().trim())
+    }
+
+    @Test
+    fun `analyzing a file with a syntax error reports it and fails`() {
+        val run = Run(config = configFile(camelCase))
+
+        val result = run.cli.run(Operation.ANALYZING, sourceFile("let BadName number = 3;"))
+
+        assertIs<Failure>(result)
+        assertContains(run.errors.toString(), "Expected ':'.")
+    }
+
+    @Test
+    fun `analyzing shows parsing progress`() {
+        val run = Run(config = configFile(camelCase))
+
+        run.cli.run(Operation.ANALYZING, sourceFile("let goodName: number = 5;"))
+
+        assertTrue(run.progress.isNotEmpty(), "analyzing must show progress while parsing")
+    }
+
+    // Formatting
 
     @Test
     fun `formatting rewrites a file with the configured rules`() {
@@ -268,6 +321,6 @@ class EndToEndTest {
             run.cli.run(Operation.FORMATTING, sourceFile("println(1);"))
         }
 
-        assertEquals("", run.formatted.toString())
+        assertEquals("", run.out.toString())
     }
 }

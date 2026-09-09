@@ -1,11 +1,13 @@
 package com.printscript.parser
 
+import com.printscript.ast.Type
 import com.printscript.report.Diagnostic
 import com.printscript.report.Failure
 import com.printscript.report.Result
 import com.printscript.report.Success
 import com.printscript.report.SyntacticUnit
 import com.printscript.report.SyntaxSymbol
+import com.printscript.report.flatMap
 import com.printscript.token.Token
 
 internal object ParsingSupport {
@@ -55,4 +57,66 @@ internal object ParsingSupport {
             )
         }
     }
+
+    fun parseLet(cursor: TokenCursor): Result<Token.LetToken> =
+        parseExpectedToken(
+            cursor,
+            SyntaxSymbol.LET,
+        )
+
+    fun parseIdentifier(cursor: TokenCursor): Result<Token.IdentifierToken> =
+        parseExpectedToken(
+            cursor,
+            SyntaxSymbol.IDENTIFIER,
+        )
+
+    fun parseColon(cursor: TokenCursor): Result<Token.ColonToken> =
+        parseExpectedToken(
+            cursor,
+            SyntaxSymbol.COLON,
+        )
+
+    /**
+     * parses a type name into its corresponding AST type
+     */
+    fun parseType(cursor: TokenCursor): Result<Type> =
+        parseExpectedToken<Token.TypeNameToken>(
+            cursor,
+            SyntaxSymbol.TYPE_NAME,
+        ).flatMap { token ->
+            when (token.lexeme) {
+                "number" ->
+                    Success(Type.NumberType)
+
+                "string" ->
+                    Success(Type.StringType)
+
+                else ->
+                    Failure(Diagnostic.UnknownType(token.lexeme, token.span))
+            }
+        }
+
+    fun parseAssign(cursor: TokenCursor): Result<Token.AssignToken> =
+        parseExpectedToken(
+            cursor,
+            SyntaxSymbol.ASSIGN,
+        )
+
+    fun parseSemicolon(cursor: TokenCursor): Result<Token.SemicolonToken> =
+        parseExpectedToken(
+            cursor,
+            SyntaxSymbol.SEMICOLON,
+        )
+
+    fun parseLeftParen(cursor: TokenCursor): Result<Token.LeftParenToken> =
+        parseExpectedToken(
+            cursor,
+            SyntaxSymbol.LEFT_PAREN,
+        )
+
+    fun parseRightParen(cursor: TokenCursor): Result<Token.RightParenToken> =
+        parseExpectedToken(
+            cursor,
+            SyntaxSymbol.RIGHT_PAREN,
+        )
 }
