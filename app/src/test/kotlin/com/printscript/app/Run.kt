@@ -20,10 +20,10 @@ private fun temporaryFile(
 
 internal class Run(
     val output: CollectingOutput = CollectingOutput(),
-    val formatted: StringBuilder = StringBuilder(),
+    val out: StringBuilder = StringBuilder(),
     val progress: StringBuilder = StringBuilder(),
     val errors: StringBuilder = StringBuilder(),
     config: Path? = null,
 ) {
-    val cli = PrintScript(output, formatted, progress, errors, config).cli()
+    val cli = PrintScript(output, out, progress, errors, config).cli()
 }

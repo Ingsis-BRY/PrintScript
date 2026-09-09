@@ -32,7 +32,7 @@ internal val Discarded =
 )
 class PrintScriptCommand(
     private val output: OutputEmitter,
-    private val formatted: Appendable,
+    private val out: Appendable,
     private val errors: Appendable,
 ) : Callable<Int> {
     @Parameters(
@@ -88,7 +88,7 @@ class PrintScriptCommand(
         val cli =
             PrintScript(
                 output = output,
-                formatted = formatted,
+                out = out,
                 progress = if (verbose) errors else Discarded,
                 errors = errors,
                 config = config,

@@ -148,3 +148,17 @@ fallo que el registro estrena: un statement que nadie reclama, y un executor al 
 sentencia ajena. El segundo es el que sostiene la promesa de que narrow devuelve un Diagnostic en
 vez de tirar ClassCastException - se comprobo rompiendolo a proposito, con un cast inseguro, y el
 test falla con ClassCastException como corresponde.
+
+Analyzing recorre sentencias adentro de Cli, igual que validation y execution, y no en un adapter
+aparte. Antes tenia su propio loop en el composition root, y ese loop se tragaba los Failure: el
+archivo con un error de sintaxis no reportaba nada y salia con codigo 0, en contra de la consigna.
+Compartir overStatements arregla las tres cosas de una: corta en el primer error, lo reporta por el
+renderer, y muestra el progreso del parseo. La leccion no es que faltaba un if - es que analyzing
+era la unica de las cuatro operaciones sin un test end to end, y no lo tenia porque escribia por un
+println de Kotlin en vez de por un sink inyectado. Lo no inyectable es lo no testeable.
+Los hallazgos ahora salen por FindingRenderer, en :linter, que es a LintFinding lo que ErrorRenderer
+es a Diagnostic: el unico lugar que abre la jerarquia y el unico que escribe prosa. Antes ese texto
+vivia suelto en PrintScript.kt, que es el composition root y no tendria que redactar nada.
+Cli declara Analyzer, la interfaz de lo que necesita - dame los hallazgos de esta sentencia - y no
+conoce :linter. El sink de stdout paso a llamarse out porque ahora lleva dos cosas: el fuente
+formateado y los hallazgos.
