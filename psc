@@ -13,5 +13,11 @@ if [ ! -x "$dist" ]; then
   exit 3
 fi
 
-export JAVA_HOME="${PRINTSCRIPT_JDK:-C:\\Users\\agusr\\.jdks\\corretto-25.0.2}"
+if [ -n "${PRINTSCRIPT_JDK:-}" ]; then
+  export JAVA_HOME="$PRINTSCRIPT_JDK"
+elif [ -z "${JAVA_HOME:-}" ] && ! command -v java >/dev/null 2>&1; then
+  echo "No Java found. Set JAVA_HOME or PRINTSCRIPT_JDK to a JDK 21 or newer." >&2
+  exit 3
+fi
+
 exec "$dist" "$@"
