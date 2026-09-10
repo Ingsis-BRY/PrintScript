@@ -4,6 +4,7 @@ import com.printscript.ast.BinaryOperator
 import com.printscript.ast.Expression
 import com.printscript.common.Position
 import com.printscript.common.Span
+import com.printscript.parser.expression.PrefixParselets
 import com.printscript.report.Diagnostic
 import com.printscript.report.Failure
 import com.printscript.report.Success
@@ -21,6 +22,7 @@ class ExpressionParsingTest {
                 TokenCursor(
                     listOf(number("42", 2, 4)),
                 ),
+                PrefixParselets.V1_0,
             ).parse()
 
         assertEquals(
@@ -43,6 +45,7 @@ class ExpressionParsingTest {
                     TokenCursor(
                         listOf(number("3.14", 4, 7)),
                     ),
+                    PrefixParselets.V1_0,
                 )
             ).parse()
 
@@ -65,6 +68,7 @@ class ExpressionParsingTest {
                 TokenCursor(
                     listOf(string("hello", 3, 5)),
                 ),
+                PrefixParselets.V1_0,
             ).parse()
 
         assertEquals(
@@ -86,6 +90,7 @@ class ExpressionParsingTest {
                 TokenCursor(
                     listOf(string("world", 6, 8)),
                 ),
+                PrefixParselets.V1_0,
             ).parse()
 
         assertEquals(
@@ -107,6 +112,7 @@ class ExpressionParsingTest {
                 TokenCursor(
                     listOf(identifier("foo", 5, 3)),
                 ),
+                PrefixParselets.V1_0,
             ).parse()
 
         assertEquals(
@@ -128,6 +134,7 @@ class ExpressionParsingTest {
                 TokenCursor(
                     listOf(identifier("total", 8, 6)),
                 ),
+                PrefixParselets.V1_0,
             ).parse()
 
         assertEquals(
@@ -153,6 +160,7 @@ class ExpressionParsingTest {
                         number("7", 2, 8),
                     ),
                 ),
+                PrefixParselets.V1_0,
             ).parse()
 
         assertEquals(
@@ -192,6 +200,7 @@ class ExpressionParsingTest {
                         number("3", 4, 11),
                     ),
                 ),
+                PrefixParselets.V1_0,
             ).parse()
 
         val expected =
@@ -243,6 +252,7 @@ class ExpressionParsingTest {
                         number("2", 6, 14),
                     ),
                 ),
+                PrefixParselets.V1_0,
             ).parse()
 
         val expected =
@@ -294,6 +304,7 @@ class ExpressionParsingTest {
                         number("4", 9, 16),
                     ),
                 ),
+                PrefixParselets.V1_0,
             ).parse()
 
         val expected =
@@ -349,6 +360,7 @@ class ExpressionParsingTest {
                 TokenCursor(
                     listOf(number("1.2.3", 11, 5)),
                 ),
+                PrefixParselets.V1_0,
             ).parse()
 
         val failure = assertIs<Failure>(result)
@@ -369,6 +381,7 @@ class ExpressionParsingTest {
                 TokenCursor(
                     listOf(plus(13, 7)),
                 ),
+                PrefixParselets.V1_0,
             ).parse()
 
         val failure = assertIs<Failure>(result)
@@ -394,6 +407,7 @@ class ExpressionParsingTest {
                         number("11", 15, 8),
                     ),
                 ),
+                PrefixParselets.V1_0,
             ).parse()
 
         val failure = assertIs<Failure>(result)
@@ -419,6 +433,7 @@ class ExpressionParsingTest {
                         rightParen(18, 10),
                     ),
                 ),
+                PrefixParselets.V1_0,
             ).parse()
 
         assertEquals(

@@ -58,11 +58,24 @@ internal object ParsingSupport {
         }
     }
 
-    fun parseLet(cursor: TokenCursor): Result<Token.LetToken> =
-        parseExpectedToken(
-            cursor,
-            SyntaxSymbol.LET,
-        )
+    fun parseKeyword(
+        cursor: TokenCursor,
+        expected: SyntaxSymbol,
+        opens: (Token) -> Boolean,
+    ): Result<Token> {
+        val token = cursor.consume()
+
+        return if (token != null && opens(token)) {
+            Success(token)
+        } else {
+            Failure(
+                Diagnostic.ExpectedSymbol(
+                    expected = expected,
+                    span = token?.span ?: cursor.endOfInput(),
+                ),
+            )
+        }
+    }
 
     fun parseIdentifier(cursor: TokenCursor): Result<Token.IdentifierToken> =
         parseExpectedToken(
@@ -91,6 +104,9 @@ internal object ParsingSupport {
                 "string" ->
                     Success(Type.StringType)
 
+                "boolean" ->
+                    Success(Type.BooleanType)
+
                 else ->
                     Failure(Diagnostic.UnknownType(token.lexeme, token.span))
             }
@@ -118,5 +134,17 @@ internal object ParsingSupport {
         parseExpectedToken(
             cursor,
             SyntaxSymbol.RIGHT_PAREN,
+        )
+
+    fun parseLeftBrace(cursor: TokenCursor): Result<Token.LeftBraceToken> =
+        parseExpectedToken(
+            cursor,
+            SyntaxSymbol.LEFT_BRACE,
+        )
+
+    fun parseRightBrace(cursor: TokenCursor): Result<Token.RightBraceToken> =
+        parseExpectedToken(
+            cursor,
+            SyntaxSymbol.RIGHT_BRACE,
         )
 }

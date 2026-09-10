@@ -5,6 +5,7 @@ import com.printscript.ast.Statement
 import com.printscript.ast.Type
 import com.printscript.common.Position
 import com.printscript.common.Span
+import com.printscript.parser.expression.PrefixParselets
 import com.printscript.parser.syntax.StatementSyntaxes
 import com.printscript.report.Diagnostic
 import com.printscript.report.Failure
@@ -18,7 +19,7 @@ import kotlin.test.assertIs
 
 class StatementParsingTest {
     private fun parse(tokens: List<Token>): Result<Statement> =
-        Parser(StatementSyntaxes.DEFAULT).parse(tokens)
+        Parser(StatementSyntaxes.V1_0, PrefixParselets.V1_0).parse(tokens)
 
     @Test
     fun `should parse variable declaration with initializer`() {
@@ -46,6 +47,7 @@ class StatementParsingTest {
                             start = Position(2, 17),
                             end = Position(2, 19),
                         ),
+                    mutable = true,
                     start = Position(2, 1),
                     end = Position(2, 20),
                 ),
@@ -73,6 +75,7 @@ class StatementParsingTest {
                     name = "message",
                     declaredType = Type.StringType,
                     initializer = null,
+                    mutable = true,
                     start = Position(4, 1),
                     end = Position(4, 21),
                 ),
@@ -242,8 +245,8 @@ class StatementParsingTest {
                     let(16, 1),
                     identifier("x", 16, 5),
                     colon(16, 6),
-                    typeName("boolean", 16, 8),
-                    semicolon(16, 15),
+                    typeName("float", 16, 8),
+                    semicolon(16, 13),
                 ),
             )
 
@@ -251,8 +254,8 @@ class StatementParsingTest {
 
         assertEquals(
             Diagnostic.UnknownType(
-                name = "boolean",
-                span = Span(Position(16, 8), Position(16, 15)),
+                name = "float",
+                span = Span(Position(16, 8), Position(16, 13)),
             ),
             failure.error,
         )
