@@ -15,7 +15,7 @@ class FormatterTest {
         config: Config = Config.PRESERVING,
     ): String {
         val out = StringBuilder()
-        val lexer = Lexer(StringSourceReader(source), TokenRecognizers.DEFAULT)
+        val lexer = Lexer(StringSourceReader(source), TokenRecognizers.V1_0)
 
         assertIs<Success<Unit>>(Formatter(config).format(lexer.tokens(), out))
 
@@ -226,7 +226,7 @@ class FormatterTest {
 
     @Test
     fun `a lexical error stops the formatting`() {
-        val lexer = Lexer(StringSourceReader("let a = @;"), TokenRecognizers.DEFAULT)
+        val lexer = Lexer(StringSourceReader("let a = @;"), TokenRecognizers.V1_0)
 
         val result = Formatter(Config.PRESERVING).format(lexer.tokens(), StringBuilder())
 
