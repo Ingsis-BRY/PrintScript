@@ -14,15 +14,22 @@ object DeclarationExecutor : StatementExecutor {
     ): Result<Unit> =
         statement.narrow<Statement.VariableDeclaration> { declaration ->
             context.environment
-                .declare(declaration.name, declaration.declaredType, declaration.span)
-                .flatMap {
+                .declare(
+                    name = declaration.name,
+                    type = declaration.declaredType,
+                    mutable = declaration.mutable,
+                    span = declaration.span,
+                ).flatMap {
                     val initializer =
                         declaration.initializer
                             ?: return@flatMap Success(Unit)
 
-                    context.evaluate(initializer).flatMap { value ->
-                        context.environment.initialize(declaration.name, value, declaration.span)
-                    }
+                    context
+                        .evaluate(initializer, declaration.declaredType)
+                        .flatMap { value ->
+                            context.environment
+                                .initialize(declaration.name, value, declaration.span)
+                        }
                 }
         }
 }

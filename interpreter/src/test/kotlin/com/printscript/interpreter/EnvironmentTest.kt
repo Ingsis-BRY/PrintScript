@@ -21,7 +21,7 @@ class EnvironmentTest {
     fun `declaring a new name succeeds`() {
         val env = Environment()
 
-        val result = env.declare("x", Type.NumberType, span)
+        val result = env.declare("x", Type.NumberType, mutable = true, span)
 
         assertIs<Success<Unit>>(result)
     }
@@ -29,9 +29,9 @@ class EnvironmentTest {
     @Test
     fun `declaring the same name twice fails`() {
         val env = Environment()
-        env.declare("x", Type.NumberType, span)
+        env.declare("x", Type.NumberType, mutable = true, span)
 
-        val error = errorOf(env.declare("x", Type.NumberType, span))
+        val error = errorOf(env.declare("x", Type.NumberType, mutable = true, span))
 
         assertEquals(Diagnostic.VariableAlreadyDeclared("x", span), error)
     }
@@ -48,7 +48,7 @@ class EnvironmentTest {
     @Test
     fun `looking up a declared but unassigned variable fails`() {
         val env = Environment()
-        env.declare("x", Type.NumberType, span)
+        env.declare("x", Type.NumberType, mutable = true, span)
 
         val error = errorOf(env.lookup("x", span))
 
@@ -58,7 +58,7 @@ class EnvironmentTest {
     @Test
     fun `reading undeclared and reading uninitialized are different errors`() {
         val env = Environment()
-        env.declare("declared", Type.NumberType, span)
+        env.declare("declared", Type.NumberType, mutable = true, span)
 
         val undeclared = errorOf(env.lookup("missing", span))
         val uninitialized = errorOf(env.lookup("declared", span))
@@ -69,7 +69,7 @@ class EnvironmentTest {
     @Test
     fun `initialize binds a value that can then be looked up`() {
         val env = Environment()
-        env.declare("x", Type.NumberType, span)
+        env.declare("x", Type.NumberType, mutable = true, span)
 
         val initialized = env.initialize("x", Value.NumberValue(5.0), span)
         val looked = env.lookup("x", span)
@@ -90,7 +90,7 @@ class EnvironmentTest {
     @Test
     fun `assign updates the value of a bound variable`() {
         val env = Environment()
-        env.declare("x", Type.NumberType, span)
+        env.declare("x", Type.NumberType, mutable = true, span)
         env.initialize("x", Value.NumberValue(1.0), span)
 
         val assigned = env.assign("x", Value.NumberValue(2.0), span)
@@ -105,7 +105,7 @@ class EnvironmentTest {
     @Test
     fun `assign to a declared but unassigned variable binds it`() {
         val env = Environment()
-        env.declare("x", Type.NumberType, span)
+        env.declare("x", Type.NumberType, mutable = true, span)
 
         val result = env.assign("x", Value.NumberValue(7.0), span)
 
@@ -128,7 +128,7 @@ class EnvironmentTest {
     @Test
     fun `assigning a value of a different type fails`() {
         val env = Environment()
-        env.declare("x", Type.NumberType, span)
+        env.declare("x", Type.NumberType, mutable = true, span)
 
         val error = errorOf(env.assign("x", Value.StringValue("nope"), span))
 
@@ -146,7 +146,7 @@ class EnvironmentTest {
     @Test
     fun `initializing with a different type fails`() {
         val env = Environment()
-        env.declare("s", Type.StringType, span)
+        env.declare("s", Type.StringType, mutable = true, span)
 
         val error = errorOf(env.initialize("s", Value.NumberValue(3.0), span))
 

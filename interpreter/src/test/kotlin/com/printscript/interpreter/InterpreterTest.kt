@@ -6,6 +6,7 @@ import com.printscript.ast.Statement
 import com.printscript.ast.Type
 import com.printscript.common.Position
 import com.printscript.interpreter.executor.StatementExecutors
+import com.printscript.interpreter.function.ValueFunctions
 import com.printscript.report.Diagnostic
 import com.printscript.report.Failure
 import com.printscript.report.Result
@@ -15,6 +16,15 @@ import kotlin.test.assertEquals
 import kotlin.test.assertIs
 
 class InterpreterTest {
+    private fun interpreterOn(output: OutputEmitter) =
+        Interpreter(
+            globalScope = Environment(),
+            output = output,
+            valueOps = ValueOps(),
+            executors = StatementExecutors.V1_0,
+            functions = ValueFunctions.NONE,
+        )
+
     private val at = Position(1, 1)
 
     private fun number(value: Double) = Expression.NumberLiteral(value, at, at)
@@ -33,7 +43,7 @@ class InterpreterTest {
         name: String,
         type: Type,
         initializer: Expression?,
-    ) = Statement.VariableDeclaration(name, type, initializer, at, at)
+    ) = Statement.VariableDeclaration(name, type, initializer, mutable = true, start = at, end = at)
 
     private fun assign(
         name: String,
@@ -46,7 +56,7 @@ class InterpreterTest {
     // test if any statement does not succeed
     private fun run(vararg statements: Statement): List<String> {
         val output = CollectingOutput()
-        val interpreter = Interpreter(Environment(), output, ValueOps(), StatementExecutors.DEFAULT)
+        val interpreter = interpreterOn(output)
 
         statements.forEach { statement ->
             assertIs<Success<Unit>>(interpreter.execute(statement))
@@ -106,7 +116,7 @@ class InterpreterTest {
     @Test
     fun `a declaration without initializer leaves the variable unassigned`() {
         val output = CollectingOutput()
-        val interpreter = Interpreter(Environment(), output, ValueOps(), StatementExecutors.DEFAULT)
+        val interpreter = interpreterOn(output)
 
         assertIs<Success<Unit>>(interpreter.execute(declare("x", Type.NumberType, null)))
 
@@ -117,7 +127,7 @@ class InterpreterTest {
     @Test
     fun `division by zero is a runtime error`() {
         val interpreter =
-            Interpreter(Environment(), CollectingOutput(), ValueOps(), StatementExecutors.DEFAULT)
+            interpreterOn(CollectingOutput())
 
         val declared = interpreter.execute(declare("a", Type.NumberType, number(1.0)))
         assertIs<Success<Unit>>(declared)
@@ -138,7 +148,7 @@ class InterpreterTest {
     @Test
     fun `referencing an undeclared variable is an error`() {
         val interpreter =
-            Interpreter(Environment(), CollectingOutput(), ValueOps(), StatementExecutors.DEFAULT)
+            interpreterOn(CollectingOutput())
 
         val result = interpreter.execute(println(reference("missing")))
 
@@ -171,7 +181,7 @@ class InterpreterTest {
     @Test
     fun `calling an unknown function is an error`() {
         val interpreter =
-            Interpreter(Environment(), CollectingOutput(), ValueOps(), StatementExecutors.DEFAULT)
+            interpreterOn(CollectingOutput())
 
         val result: Result<Unit> =
             interpreter.execute(Statement.CallStatement("print", number(1.0), at, at))

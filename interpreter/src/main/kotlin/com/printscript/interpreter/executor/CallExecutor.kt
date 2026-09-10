@@ -1,6 +1,7 @@
 package com.printscript.interpreter.executor
 
 import com.printscript.ast.Statement
+import com.printscript.ast.Type
 import com.printscript.report.Diagnostic
 import com.printscript.report.Failure
 import com.printscript.report.Result
@@ -20,7 +21,7 @@ class CallExecutor(
                 builtins[call.callee]
                     ?: return@narrow Failure(Diagnostic.UnknownFunction(call.callee, call.span))
 
-            context.evaluate(call.argument).flatMap { argument ->
+            context.evaluate(call.argument, Type.StringType).flatMap { argument ->
                 builtin.call(argument, context)
             }
         }
