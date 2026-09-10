@@ -6,45 +6,56 @@ import com.printscript.report.Result
 import com.printscript.report.Success
 import com.printscript.token.Token
 
-/**
-* composes a token source and a parser into a source that hands over one
-* [Statement] at a time. tokens are pulled lazily and grouped up to the
-* closing `;`, so the source is never buffered whole: a single statement
-* lives in memory at once.
-*/
 class StatementStream(
     source: TokenSource,
     private val parser: StatementParser,
+    private val boundary: StatementBoundary,
 ) {
     private val tokens = source.tokens().iterator()
+
+    private var pending: Result<Token>? = null
 
     /**
      * whether the source still holds tokens to form a statement
      */
-    fun hasNext(): Boolean = tokens.hasNext()
+    fun hasNext(): Boolean = pending != null || tokens.hasNext()
 
-    /**
-     * reads tokens up to and including the next `;` and parses them.
-     * a lexical [Failure] is handed over as is, stopping at the first error.
-     */
     fun next(): Result<Statement> {
         val batch = mutableListOf<Token>()
+        var scan = boundary.scan()
 
-        while (tokens.hasNext()) {
-            when (val result = tokens.next()) {
+        while (true) {
+            when (val result = take() ?: break) {
                 is Failure -> return result
 
                 is Success -> {
                     batch.add(result.value)
+                    scan = scan.take(result.value)
 
-                    if (result.value is Token.SemicolonToken) {
+                    if (scan.endsStatement(peek())) {
                         return parser.parse(batch)
                     }
                 }
             }
         }
 
-        // ran out of tokens before a `;`: let the parser report what is missing
         return parser.parse(batch)
+    }
+
+    private fun take(): Result<Token>? {
+        pending?.let {
+            pending = null
+            return it
+        }
+
+        return if (tokens.hasNext()) tokens.next() else null
+    }
+
+    private fun peek(): Token? {
+        if (pending == null && tokens.hasNext()) {
+            pending = tokens.next()
+        }
+
+        return (pending as? Success)?.value
     }
 }

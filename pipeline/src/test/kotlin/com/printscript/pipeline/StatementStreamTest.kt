@@ -7,6 +7,7 @@ import com.printscript.lexer.Lexer
 import com.printscript.lexer.StringSourceReader
 import com.printscript.lexer.recognizer.TokenRecognizers
 import com.printscript.parser.Parser
+import com.printscript.parser.expression.PrefixParselets
 import com.printscript.parser.syntax.StatementSyntaxes
 import com.printscript.report.Diagnostic
 import com.printscript.report.Failure
@@ -19,14 +20,43 @@ import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
 class StatementStreamTest {
-    private fun streamOf(source: String): StatementStream {
-        val lexer = Lexer(StringSourceReader(source), TokenRecognizers.DEFAULT)
+    private fun streamOf(source: String): StatementStream = streamOf(source, version10)
+
+    private fun streamOf(
+        source: String,
+        version: Version,
+    ): StatementStream {
+        val lexer = Lexer(StringSourceReader(source), version.recognizers)
 
         return StatementStream(
             source = TokenSource(lexer::tokens),
-            parser = StatementParser(Parser(StatementSyntaxes.DEFAULT)::parse),
+            parser = StatementParser(Parser(version.syntaxes, version.parselets)::parse),
+            boundary = version.boundary,
         )
     }
+
+    private data class Version(
+        val recognizers: List<com.printscript.lexer.recognizer.TokenRecognizer>,
+        val syntaxes: List<com.printscript.parser.syntax.StatementSyntax>,
+        val parselets: List<com.printscript.parser.expression.PrefixParselet>,
+        val boundary: StatementBoundary,
+    )
+
+    private val version10 =
+        Version(
+            TokenRecognizers.V1_0,
+            StatementSyntaxes.V1_0,
+            PrefixParselets.V1_0,
+            StatementBoundaries.V1_0,
+        )
+
+    private val version11 =
+        Version(
+            TokenRecognizers.V1_1,
+            StatementSyntaxes.V1_1,
+            PrefixParselets.V1_1,
+            StatementBoundaries.V1_1,
+        )
 
     // drains the whole stream, failing the test on the first error
     private fun statementsOf(source: String): List<Statement> {
@@ -173,5 +203,95 @@ class StatementStreamTest {
 
         assertEquals(count, parsed)
         assertTrue(parsed > 0)
+    }
+
+    private fun statements11Of(source: String): List<Statement> {
+        val stream = streamOf(source, version11)
+        val statements = mutableListOf<Statement>()
+
+        while (stream.hasNext()) {
+            statements.add(assertIs<Success<Statement>>(stream.next()).value)
+        }
+
+        return statements
+    }
+
+    @Test
+    fun `a semicolon inside a block does not end the statement`() {
+        val statements = statements11Of("if (a) { println(1); println(2); }")
+
+        assertEquals(1, statements.size)
+        val conditional = assertIs<Statement.IfStatement>(statements.single())
+        assertEquals(2, conditional.consequence.size)
+    }
+
+    @Test
+    fun `an else keeps the statement going past the closing brace`() {
+        val statements = statements11Of("if (a) { println(1); } else { println(2); }")
+
+        assertEquals(1, statements.size)
+        assertEquals(1, assertIs<Statement.IfStatement>(statements.single()).alternative?.size)
+    }
+
+    @Test
+    fun `a closing brace with no else ends the statement`() {
+        val statements = statements11Of("if (a) { println(1); } println(2);")
+
+        assertEquals(2, statements.size)
+        assertIs<Statement.IfStatement>(statements.first())
+        assertIs<Statement.CallStatement>(statements.last())
+    }
+
+    @Test
+    fun `only the outermost closing brace ends the statement`() {
+        val statements = statements11Of("if (a) { if (a) { println(1); } } println(2);")
+
+        assertEquals(2, statements.size)
+        val outer = assertIs<Statement.IfStatement>(statements.first())
+        assertIs<Statement.IfStatement>(outer.consequence.single())
+    }
+
+    @Test
+    fun `an if on its own is one statement`() {
+        assertEquals(1, statements11Of("if (a) { println(1); }").size)
+    }
+
+    @Test
+    fun `statements around a block are still split by their semicolons`() {
+        val statements =
+            statements11Of("let a: boolean = true; if (a) { println(1); } println(2);")
+
+        assertEquals(3, statements.size)
+    }
+
+    @Test
+    fun `a block that never closes is handed to the parser as it is`() {
+        val stream = streamOf("if (a) { println(1);", version11)
+
+        assertIs<Failure>(stream.next())
+    }
+
+    @Test
+    fun `a stray closing brace ends the batch instead of running away`() {
+        val stream = streamOf("} println(1);", version11)
+
+        assertIs<Failure>(stream.next())
+        assertTrue(stream.hasNext(), "the tokens after the stray brace are still there")
+    }
+
+    @Test
+    fun `the lookahead does not lose a token`() {
+        val statements = statements11Of("println(1); println(2); println(3);")
+
+        assertEquals(3, statements.size)
+    }
+
+    @Test
+    fun `a lexical failure read while looking ahead is reported on the next statement`() {
+        val stream = streamOf("println(1); @", version11)
+
+        assertIs<Success<Statement>>(stream.next())
+        assertTrue(stream.hasNext())
+        assertIs<Failure>(stream.next())
     }
 }
