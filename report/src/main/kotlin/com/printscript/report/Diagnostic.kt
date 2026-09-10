@@ -134,6 +134,31 @@ sealed interface Diagnostic {
     data class UnsupportedStatement(
         override val span: Span,
     ) : Diagnostic
+
+    data class NonBooleanCondition(
+        val actual: Type,
+        override val span: Span,
+    ) : Diagnostic
+
+    data class ConstantReassignment(
+        val name: String,
+        override val span: Span,
+    ) : Diagnostic
+
+    data class UninterpretableInput(
+        val text: String,
+        val expected: Type,
+        override val span: Span,
+    ) : Diagnostic
+
+    data class MissingInput(
+        override val span: Span,
+    ) : Diagnostic
+
+    data class MissingEnvironmentVariable(
+        val name: String,
+        override val span: Span,
+    ) : Diagnostic
 }
 
 /**
@@ -150,6 +175,10 @@ enum class LexicalFault {
  */
 enum class SyntaxSymbol {
     LET,
+    CONST,
+    IF,
+    LEFT_BRACE,
+    RIGHT_BRACE,
     IDENTIFIER,
     COLON,
     TYPE_NAME,

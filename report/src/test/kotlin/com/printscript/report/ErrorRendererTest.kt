@@ -77,6 +77,10 @@ class ErrorRendererTest {
         val expected =
             mapOf(
                 SyntaxSymbol.LET to "Expected 'let'.",
+                SyntaxSymbol.CONST to "Expected 'const'.",
+                SyntaxSymbol.IF to "Expected 'if'.",
+                SyntaxSymbol.LEFT_BRACE to "Expected '{'.",
+                SyntaxSymbol.RIGHT_BRACE to "Expected '}'.",
                 SyntaxSymbol.IDENTIFIER to "Expected an identifier.",
                 SyntaxSymbol.COLON to "Expected ':'.",
                 SyntaxSymbol.TYPE_NAME to "Expected a type.",

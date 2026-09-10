@@ -16,6 +16,12 @@ sealed interface Expression : Located {
         override val end: Position,
     ) : Expression
 
+    data class BooleanLiteral(
+        val value: Boolean,
+        override val start: Position,
+        override val end: Position,
+    ) : Expression
+
     data class VariableReference(
         val name: String,
         override val start: Position,
@@ -26,6 +32,13 @@ sealed interface Expression : Located {
         val left: Expression,
         val operator: BinaryOperator,
         val right: Expression,
+        override val start: Position,
+        override val end: Position,
+    ) : Expression
+
+    data class FunctionCall(
+        val callee: String,
+        val argument: Expression,
         override val start: Position,
         override val end: Position,
     ) : Expression

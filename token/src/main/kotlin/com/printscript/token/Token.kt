@@ -91,4 +91,41 @@ sealed interface Token : Located {
         override val start: Position,
         override val end: Position,
     ) : Token
+
+    data class ConstToken(
+        override val lexeme: String,
+        override val start: Position,
+        override val end: Position,
+    ) : Token
+
+    data class IfToken(
+        override val lexeme: String,
+        override val start: Position,
+        override val end: Position,
+    ) : Token
+
+    data class ElseToken(
+        override val lexeme: String,
+        override val start: Position,
+        override val end: Position,
+    ) : Token
+
+    data class BooleanLiteralToken(
+        override val lexeme: String,
+        val value: Boolean,
+        override val start: Position,
+        override val end: Position,
+    ) : Token
+
+    data class LeftBraceToken(
+        override val lexeme: String,
+        override val start: Position,
+        override val end: Position,
+    ) : Token
+
+    data class RightBraceToken(
+        override val lexeme: String,
+        override val start: Position,
+        override val end: Position,
+    ) : Token
 }

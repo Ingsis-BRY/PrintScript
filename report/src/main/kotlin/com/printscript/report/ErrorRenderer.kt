@@ -73,6 +73,22 @@ class ErrorRenderer {
 
             is Diagnostic.UnsupportedStatement ->
                 "Unsupported statement."
+
+            is Diagnostic.NonBooleanCondition ->
+                "An 'if' condition must be a boolean, but this one is a " +
+                    "${describe(error.actual)}."
+
+            is Diagnostic.ConstantReassignment ->
+                "Constant '${error.name}' cannot be reassigned."
+
+            is Diagnostic.UninterpretableInput ->
+                "Cannot read '${error.text}' as a ${describe(error.expected)}."
+
+            is Diagnostic.MissingInput ->
+                "No input available."
+
+            is Diagnostic.MissingEnvironmentVariable ->
+                "Environment variable '${error.name}' is not defined."
         }
 
     private fun describe(fault: LexicalFault): String =
@@ -87,6 +103,10 @@ class ErrorRenderer {
     private fun describe(symbol: SyntaxSymbol): String =
         when (symbol) {
             SyntaxSymbol.LET -> "'let'"
+            SyntaxSymbol.CONST -> "'const'"
+            SyntaxSymbol.IF -> "'if'"
+            SyntaxSymbol.LEFT_BRACE -> "'{'"
+            SyntaxSymbol.RIGHT_BRACE -> "'}'"
             SyntaxSymbol.IDENTIFIER -> "an identifier"
             SyntaxSymbol.COLON -> "':'"
             SyntaxSymbol.TYPE_NAME -> "a type"
@@ -107,6 +127,7 @@ class ErrorRenderer {
         when (type) {
             Type.NumberType -> "number"
             Type.StringType -> "string"
+            Type.BooleanType -> "boolean"
         }
 
     private fun describe(operator: BinaryOperator): String =

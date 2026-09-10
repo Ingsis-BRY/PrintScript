@@ -23,6 +23,7 @@ class StatementTest {
                 name = "x",
                 declaredType = Type.NumberType,
                 initializer = initializer,
+                mutable = true,
                 start = start,
                 end = end,
             )
@@ -41,6 +42,7 @@ class StatementTest {
                 name = "x",
                 declaredType = Type.NumberType,
                 initializer = null,
+                mutable = true,
                 start = start,
                 end = end,
             )
@@ -105,6 +107,7 @@ class StatementTest {
                 name = "x",
                 declaredType = Type.NumberType,
                 initializer = null,
+                mutable = true,
                 start = start,
                 end = end,
             )
@@ -114,6 +117,7 @@ class StatementTest {
                 name = "x",
                 declaredType = Type.NumberType,
                 initializer = null,
+                mutable = true,
                 start = start,
                 end = end,
             )
