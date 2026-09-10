@@ -211,6 +211,7 @@ class IdentifierFormatingRuleTest {
             name = name,
             declaredType = Type.NumberType,
             initializer = null,
+            mutable = true,
             start = span.start,
             end = span.end,
         )

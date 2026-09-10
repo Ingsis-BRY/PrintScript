@@ -38,7 +38,9 @@ class IdentifierFormatingRule(
                     Span(statement.start, statement.end),
                 )
 
-            is Statement.CallStatement ->
+            is Statement.CallStatement,
+            is Statement.IfStatement,
+            ->
                 emptyList()
         }
 
@@ -52,7 +54,9 @@ class IdentifierFormatingRule(
 
             is Expression.NumberLiteral,
             is Expression.StringLiteral,
+            is Expression.BooleanLiteral,
             is Expression.BinaryExpression,
+            is Expression.FunctionCall,
             ->
                 emptyList()
         }

@@ -36,6 +36,11 @@ class LintWalker(
                 is Statement.Assignment -> walkExpression(statement.value)
 
                 is Statement.CallStatement -> walkExpression(statement.argument)
+
+                is Statement.IfStatement ->
+                    walkExpression(statement.condition) +
+                        statement.consequence.flatMap(::walkStatement) +
+                        statement.alternative.orEmpty().flatMap(::walkStatement)
             }
 
         return findings + children
@@ -51,7 +56,15 @@ class LintWalker(
                     walkExpression(expression.left) +
                         walkExpression(expression.right)
 
-                else -> emptyList()
+                is Expression.FunctionCall ->
+                    walkExpression(expression.argument)
+
+                is Expression.NumberLiteral,
+                is Expression.StringLiteral,
+                is Expression.BooleanLiteral,
+                is Expression.VariableReference,
+                ->
+                    emptyList()
             }
 
         return findings + children

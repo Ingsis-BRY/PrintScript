@@ -13,31 +13,33 @@ class BuiltinArgumentRule(
     private val invalidFinding: (Span) -> LintFinding,
 ) : LintRule {
     override fun check(node: LintNode): List<LintFinding> {
-        if (!enabled || node !is LintNode.Statement) {
+        if (!enabled) {
             return emptyList()
         }
 
-        val statement = node.value
+        val argument =
+            argumentOf(node)
+                ?: return emptyList()
 
-        if (statement !is Statement.CallStatement ||
-            statement.callee != builtinName
-        ) {
+        if (isAllowed(argument)) {
             return emptyList()
         }
 
-        if (isAllowed(statement.argument)) {
-            return emptyList()
-        }
-
-        return listOf(
-            invalidFinding(
-                Span(
-                    statement.argument.start,
-                    statement.argument.end,
-                ),
-            ),
-        )
+        return listOf(invalidFinding(argument.span))
     }
+
+    private fun argumentOf(node: LintNode): Expression? =
+        when (node) {
+            is LintNode.Statement ->
+                (node.value as? Statement.CallStatement)
+                    ?.takeIf { it.callee == builtinName }
+                    ?.argument
+
+            is LintNode.Expression ->
+                (node.value as? Expression.FunctionCall)
+                    ?.takeIf { it.callee == builtinName }
+                    ?.argument
+        }
 
     private fun isAllowed(expression: Expression): Boolean =
         expression !is Expression.BinaryExpression
