@@ -5,6 +5,7 @@ rootProject.name = "PrintScript"
 
 include(":app")
 include(":ast")
+include(":checker")
 include(":cli")
 include(":common")
 include(":formatter")
