@@ -1,6 +1,7 @@
 package com.printscript.app
 
 import com.printscript.ast.Statement
+import com.printscript.checker.Checker
 import com.printscript.cli.Analyzer
 import com.printscript.cli.Cli
 import com.printscript.cli.Formatting
@@ -10,12 +11,13 @@ import com.printscript.cli.StatementSource
 import com.printscript.formatter.Config
 import com.printscript.formatter.ConfigError
 import com.printscript.formatter.Formatter
-import com.printscript.interpreter.Environment
 import com.printscript.interpreter.EnvironmentSource
 import com.printscript.interpreter.InputProvider
 import com.printscript.interpreter.Interpreter
 import com.printscript.interpreter.OutputEmitter
+import com.printscript.interpreter.Value
 import com.printscript.interpreter.ValueOps
+import com.printscript.language.Environment
 import com.printscript.lexer.Lexer
 import com.printscript.lexer.StreamSourceReader
 import com.printscript.linter.Linter
@@ -44,6 +46,7 @@ class PrintScript(
         Cli(
             newStatements = ::statementsIn,
             newProgram = ::newProgram,
+            newChecker = ::newChecker,
             newFormatting = ::formattingIn,
             newAnalyzer = ::newAnalyzer,
             renderer = ErrorRenderer(),
@@ -69,7 +72,7 @@ class PrintScript(
     private fun newProgram(): Program {
         val interpreter =
             Interpreter(
-                globalScope = Environment(),
+                globalScope = Environment<Value>(),
                 output = output,
                 valueOps = ValueOps(),
                 executors = dialect.executors,
@@ -77,6 +80,17 @@ class PrintScript(
             )
 
         return InterpreterProgram(interpreter)
+    }
+
+    private fun newChecker(): Program {
+        val checker =
+            Checker(
+                globalScope = Environment(),
+                signatures = dialect.signatures,
+                builtins = setOf("println"),
+            )
+
+        return Program(checker::check)
     }
 
     private fun formattingIn(file: Path): Formatting {

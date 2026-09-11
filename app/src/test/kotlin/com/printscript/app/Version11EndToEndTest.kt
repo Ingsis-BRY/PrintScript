@@ -422,4 +422,109 @@ class Version11EndToEndTest {
             run.cli.run(Operation.EXECUTION, sourceFile("println(1);")),
         )
     }
+
+    private fun validate11(source: String): String {
+        val run = run11()
+
+        assertIs<Failure>(run.cli.run(Operation.VALIDATION, sourceFile(source)))
+
+        return run.errors.toString().trim()
+    }
+
+    @Test
+    fun `validation rejects a value of the wrong type without running`() {
+        val run = run11()
+
+        assertIs<Failure>(
+            run.cli.run(Operation.VALIDATION, sourceFile("""let x: number = "hola";""")),
+        )
+
+        assertContains(run.errors.toString(), "Cannot assign a string value")
+        assertTrue(run.output.lines().isEmpty(), "validation must not execute")
+    }
+
+    @Test
+    fun `validation rejects a name that was never declared`() {
+        assertContains(validate11("x = 5;"), "Variable 'x' is not declared.")
+    }
+
+    @Test
+    fun `validation rejects reassigning a constant`() {
+        val error =
+            validate11(
+                """
+                const b: number = 5;
+                b = 2;
+                """.trimIndent(),
+            )
+
+        assertContains(error, "Constant 'b' cannot be reassigned.")
+    }
+
+    @Test
+    fun `validation rejects a condition that is not a boolean`() {
+        val error =
+            validate11(
+                """
+                let a: number = 21;
+                if (a) {
+                }
+                """.trimIndent(),
+            )
+
+        assertContains(error, "must be a boolean")
+    }
+
+    @Test
+    fun `validation rejects an operator applied to types it does not accept`() {
+        assertContains(
+            validate11("""let r: string = "s" * 5;"""),
+            "Cannot apply '*' to string and number.",
+        )
+    }
+
+    @Test
+    fun `validation accepts a program that types checks, and runs nothing`() {
+        val run = run11()
+
+        val result =
+            run.cli.run(
+                Operation.VALIDATION,
+                sourceFile(
+                    """
+                    const yes: boolean = true;
+                    let total: number = 1;
+                    if (yes) {
+                        total = total + 41;
+                    }
+                    println(total);
+                    """.trimIndent(),
+                ),
+            )
+
+        assertIs<Success<Unit>>(result)
+        assertTrue(run.output.lines().isEmpty(), "validation must not execute")
+    }
+
+    @Test
+    fun `validation does not divide, so it does not fail on a division by zero`() {
+        val run = run11()
+
+        assertIs<Success<Unit>>(
+            run.cli.run(Operation.VALIDATION, sourceFile("let n: number = 1 / 0;")),
+        )
+    }
+
+    @Test
+    fun `an if condition has to be a variable`() {
+        assertContains(
+            validate11(
+                """
+                if (true) {
+                }
+                """.trimIndent(),
+            ),
+            "An 'if' condition must be a variable.",
+        )
+    }
 }

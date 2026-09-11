@@ -1,5 +1,7 @@
 package com.printscript.app
 
+import com.printscript.checker.FunctionSignatures
+import com.printscript.checker.Signature
 import com.printscript.interpreter.EnvironmentSource
 import com.printscript.interpreter.InputProvider
 import com.printscript.interpreter.executor.StatementExecutor
@@ -22,6 +24,7 @@ class Dialect(
     val parselets: List<PrefixParselet>,
     val executors: List<StatementExecutor>,
     val boundary: StatementBoundary,
+    val signatures: Map<String, Signature>,
     val functions: (InputProvider, EnvironmentSource) -> Map<String, ValueFunction>,
 ) {
     companion object {
@@ -35,6 +38,7 @@ class Dialect(
                 parselets = PrefixParselets.V1_0,
                 executors = StatementExecutors.V1_0,
                 boundary = StatementBoundaries.V1_0,
+                signatures = FunctionSignatures.NONE,
                 functions = { _, _ -> ValueFunctions.NONE },
             )
 
@@ -46,6 +50,7 @@ class Dialect(
                 parselets = PrefixParselets.V1_1,
                 executors = StatementExecutors.V1_1,
                 boundary = StatementBoundaries.V1_1,
+                signatures = FunctionSignatures.V1_1,
                 functions = ValueFunctions::readers,
             )
 
