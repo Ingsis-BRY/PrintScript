@@ -3,6 +3,7 @@ package com.printscript.interpreter
 import com.printscript.ast.Type
 import com.printscript.common.Position
 import com.printscript.common.Span
+import com.printscript.language.Environment
 import com.printscript.report.Diagnostic
 import com.printscript.report.Failure
 import com.printscript.report.Success
@@ -17,11 +18,11 @@ class ScopeAndConstTest {
         name: String,
         value: Value,
         mutable: Boolean,
-    ): Environment {
-        val environment = Environment()
+    ): Environment<Value> {
+        val environment = Environment<Value>()
 
         assertIs<Success<Unit>>(environment.declare(name, value.type, mutable, span))
-        assertIs<Success<Unit>>(environment.initialize(name, value, span))
+        assertIs<Success<Unit>>(environment.initialize(name, value, value.type, span))
 
         return environment
     }
@@ -37,7 +38,10 @@ class ScopeAndConstTest {
     fun `a constant refuses a second value`() {
         val environment = environmentWith("a", Value.NumberValue(5.0), mutable = false)
 
-        val error = assertIs<Failure>(environment.assign("a", Value.NumberValue(2.0), span)).error
+        val error =
+            assertIs<Failure>(
+                environment.assign("a", Value.NumberValue(2.0), Value.NumberValue(2.0).type, span),
+            ).error
 
         assertEquals("a", assertIs<Diagnostic.ConstantReassignment>(error).name)
     }
@@ -46,7 +50,9 @@ class ScopeAndConstTest {
     fun `a variable takes a second value`() {
         val environment = environmentWith("a", Value.NumberValue(5.0), mutable = true)
 
-        assertIs<Success<Unit>>(environment.assign("a", Value.NumberValue(2.0), span))
+        assertIs<Success<Unit>>(
+            environment.assign("a", Value.NumberValue(2.0), Value.NumberValue(2.0).type, span),
+        )
         assertEquals(Success(Value.NumberValue(2.0)), environment.lookup("a", span))
     }
 
@@ -54,20 +60,27 @@ class ScopeAndConstTest {
     fun `reassignment is refused before the type is even checked`() {
         val environment = environmentWith("a", Value.NumberValue(5.0), mutable = false)
 
-        val error = assertIs<Failure>(environment.assign("a", Value.StringValue("x"), span)).error
+        val error =
+            assertIs<Failure>(
+                environment.assign("a", Value.StringValue("x"), Value.StringValue("x").type, span),
+            ).error
 
         assertIs<Diagnostic.ConstantReassignment>(error)
     }
 
     @Test
     fun `a constant declared in a block is still a constant there`() {
-        val environment = Environment()
+        val environment = Environment<Value>()
         val block = environment.child()
 
         assertIs<Success<Unit>>(block.declare("a", Type.NumberType, mutable = false, span))
-        assertIs<Success<Unit>>(block.initialize("a", Value.NumberValue(1.0), span))
+        assertIs<Success<Unit>>(
+            block.initialize("a", Value.NumberValue(1.0), Value.NumberValue(1.0).type, span),
+        )
 
-        assertIs<Failure>(block.assign("a", Value.NumberValue(2.0), span))
+        assertIs<Failure>(
+            block.assign("a", Value.NumberValue(2.0), Value.NumberValue(2.0).type, span),
+        )
     }
 
     @Test
@@ -81,13 +94,20 @@ class ScopeAndConstTest {
     fun `a block writes to the scope that declared the name`() {
         val environment = environmentWith("a", Value.NumberValue(1.0), mutable = true)
 
-        assertIs<Success<Unit>>(environment.child().assign("a", Value.NumberValue(2.0), span))
+        assertIs<Success<Unit>>(
+            environment.child().assign(
+                "a",
+                Value.NumberValue(2.0),
+                Value.NumberValue(2.0).type,
+                span,
+            ),
+        )
         assertEquals(Success(Value.NumberValue(2.0)), environment.lookup("a", span))
     }
 
     @Test
     fun `a name declared in a block is not visible outside it`() {
-        val environment = Environment()
+        val environment = Environment<Value>()
         val block = environment.child()
 
         assertIs<Success<Unit>>(block.declare("a", Type.NumberType, mutable = true, span))
@@ -103,7 +123,14 @@ class ScopeAndConstTest {
         val block = environment.child()
 
         assertIs<Success<Unit>>(block.declare("a", Type.StringType, mutable = true, span))
-        assertIs<Success<Unit>>(block.initialize("a", Value.StringValue("inner"), span))
+        assertIs<Success<Unit>>(
+            block.initialize(
+                "a",
+                Value.StringValue("inner"),
+                Value.StringValue("inner").type,
+                span,
+            ),
+        )
 
         assertEquals(Success(Value.StringValue("inner")), block.lookup("a", span))
         assertEquals(Success(Value.NumberValue(1.0)), environment.lookup("a", span))
@@ -111,7 +138,7 @@ class ScopeAndConstTest {
 
     @Test
     fun `declaring the same name twice in one scope is still refused`() {
-        val environment = Environment()
+        val environment = Environment<Value>()
 
         assertIs<Success<Unit>>(environment.declare("a", Type.NumberType, mutable = true, span))
 
@@ -135,7 +162,7 @@ class ScopeAndConstTest {
 
     @Test
     fun `the declared type of a name is readable through the scopes`() {
-        val environment = Environment()
+        val environment = Environment<Value>()
 
         assertIs<Success<Unit>>(environment.declare("a", Type.BooleanType, mutable = true, span))
 
@@ -144,7 +171,7 @@ class ScopeAndConstTest {
 
     @Test
     fun `a name no scope declares has no declared type`() {
-        assertEquals(null, Environment().declaredTypeOf("missing"))
+        assertEquals(null, Environment<Value>().declaredTypeOf("missing"))
     }
 
     @Test

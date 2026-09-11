@@ -6,6 +6,7 @@ import com.printscript.ast.Type
 import com.printscript.interpreter.executor.ExecutionContext
 import com.printscript.interpreter.executor.StatementExecutor
 import com.printscript.interpreter.function.ValueFunction
+import com.printscript.language.Environment
 import com.printscript.report.Diagnostic
 import com.printscript.report.Failure
 import com.printscript.report.Result
@@ -13,7 +14,7 @@ import com.printscript.report.Success
 import com.printscript.report.flatMap
 
 class Interpreter(
-    private val globalScope: Environment,
+    private val globalScope: Environment<Value>,
     private val output: OutputEmitter,
     private val valueOps: ValueOps,
     private val executors: List<StatementExecutor>,
@@ -23,7 +24,7 @@ class Interpreter(
 
     private fun execute(
         statement: Statement,
-        scope: Environment,
+        scope: Environment<Value>,
     ): Result<Unit> {
         val executor =
             executors.firstOrNull { it.matches(statement) }
@@ -35,7 +36,7 @@ class Interpreter(
     private fun evaluate(
         expression: Expression,
         expected: Type?,
-        scope: Environment,
+        scope: Environment<Value>,
     ): Result<Value> =
         when (expression) {
             is Expression.NumberLiteral -> Success(Value.NumberValue(expression.value))
@@ -48,7 +49,7 @@ class Interpreter(
 
     private fun evaluateBinary(
         expression: Expression.BinaryExpression,
-        scope: Environment,
+        scope: Environment<Value>,
     ): Result<Value> =
         evaluate(expression.left, null, scope).flatMap { left ->
             evaluate(expression.right, null, scope).flatMap { right ->
@@ -59,7 +60,7 @@ class Interpreter(
     private fun evaluateCall(
         expression: Expression.FunctionCall,
         expected: Type?,
-        scope: Environment,
+        scope: Environment<Value>,
     ): Result<Value> {
         val function =
             functions[expression.callee]
@@ -73,7 +74,7 @@ class Interpreter(
     }
 
     private inner class Context(
-        override val environment: Environment,
+        override val environment: Environment<Value>,
     ) : ExecutionContext {
         override fun evaluate(
             expression: Expression,

@@ -7,6 +7,7 @@ import com.printscript.ast.Type
 import com.printscript.common.Position
 import com.printscript.interpreter.executor.StatementExecutors
 import com.printscript.interpreter.function.ValueFunctions
+import com.printscript.language.Environment
 import com.printscript.report.Diagnostic
 import com.printscript.report.Failure
 import com.printscript.report.Result
@@ -18,7 +19,7 @@ import kotlin.test.assertIs
 class InterpreterTest {
     private fun interpreterOn(output: OutputEmitter) =
         Interpreter(
-            globalScope = Environment(),
+            globalScope = Environment<Value>(),
             output = output,
             valueOps = ValueOps(),
             executors = StatementExecutors.V1_0,

@@ -3,6 +3,7 @@ package com.printscript.interpreter
 import com.printscript.ast.Type
 import com.printscript.common.Position
 import com.printscript.common.Span
+import com.printscript.language.Environment
 import com.printscript.report.Diagnostic
 import com.printscript.report.Failure
 import com.printscript.report.Result
@@ -19,7 +20,7 @@ class EnvironmentTest {
 
     @Test
     fun `declaring a new name succeeds`() {
-        val env = Environment()
+        val env = Environment<Value>()
 
         val result = env.declare("x", Type.NumberType, mutable = true, span)
 
@@ -28,7 +29,7 @@ class EnvironmentTest {
 
     @Test
     fun `declaring the same name twice fails`() {
-        val env = Environment()
+        val env = Environment<Value>()
         env.declare("x", Type.NumberType, mutable = true, span)
 
         val error = errorOf(env.declare("x", Type.NumberType, mutable = true, span))
@@ -38,7 +39,7 @@ class EnvironmentTest {
 
     @Test
     fun `looking up an undeclared variable fails`() {
-        val env = Environment()
+        val env = Environment<Value>()
 
         val error = errorOf(env.lookup("x", span))
 
@@ -47,7 +48,7 @@ class EnvironmentTest {
 
     @Test
     fun `looking up a declared but unassigned variable fails`() {
-        val env = Environment()
+        val env = Environment<Value>()
         env.declare("x", Type.NumberType, mutable = true, span)
 
         val error = errorOf(env.lookup("x", span))
@@ -57,7 +58,7 @@ class EnvironmentTest {
 
     @Test
     fun `reading undeclared and reading uninitialized are different errors`() {
-        val env = Environment()
+        val env = Environment<Value>()
         env.declare("declared", Type.NumberType, mutable = true, span)
 
         val undeclared = errorOf(env.lookup("missing", span))
@@ -68,10 +69,16 @@ class EnvironmentTest {
 
     @Test
     fun `initialize binds a value that can then be looked up`() {
-        val env = Environment()
+        val env = Environment<Value>()
         env.declare("x", Type.NumberType, mutable = true, span)
 
-        val initialized = env.initialize("x", Value.NumberValue(5.0), span)
+        val initialized =
+            env.initialize(
+                "x",
+                Value.NumberValue(5.0),
+                Value.NumberValue(5.0).type,
+                span,
+            )
         val looked = env.lookup("x", span)
 
         assertIs<Success<Unit>>(initialized)
@@ -80,20 +87,21 @@ class EnvironmentTest {
 
     @Test
     fun `initializing an undeclared variable fails`() {
-        val env = Environment()
+        val env = Environment<Value>()
 
-        val error = errorOf(env.initialize("x", Value.NumberValue(5.0), span))
+        val error =
+            errorOf(env.initialize("x", Value.NumberValue(5.0), Value.NumberValue(5.0).type, span))
 
         assertEquals(Diagnostic.VariableNotDeclared("x", span), error)
     }
 
     @Test
     fun `assign updates the value of a bound variable`() {
-        val env = Environment()
+        val env = Environment<Value>()
         env.declare("x", Type.NumberType, mutable = true, span)
-        env.initialize("x", Value.NumberValue(1.0), span)
+        env.initialize("x", Value.NumberValue(1.0), Value.NumberValue(1.0).type, span)
 
-        val assigned = env.assign("x", Value.NumberValue(2.0), span)
+        val assigned = env.assign("x", Value.NumberValue(2.0), Value.NumberValue(2.0).type, span)
 
         assertIs<Success<Unit>>(assigned)
         assertEquals(
@@ -104,10 +112,10 @@ class EnvironmentTest {
 
     @Test
     fun `assign to a declared but unassigned variable binds it`() {
-        val env = Environment()
+        val env = Environment<Value>()
         env.declare("x", Type.NumberType, mutable = true, span)
 
-        val result = env.assign("x", Value.NumberValue(7.0), span)
+        val result = env.assign("x", Value.NumberValue(7.0), Value.NumberValue(7.0).type, span)
 
         assertIs<Success<Unit>>(result)
         assertEquals(
@@ -118,19 +126,23 @@ class EnvironmentTest {
 
     @Test
     fun `assigning an undeclared variable fails`() {
-        val env = Environment()
+        val env = Environment<Value>()
 
-        val error = errorOf(env.assign("x", Value.NumberValue(5.0), span))
+        val error =
+            errorOf(env.assign("x", Value.NumberValue(5.0), Value.NumberValue(5.0).type, span))
 
         assertEquals(Diagnostic.VariableNotDeclared("x", span), error)
     }
 
     @Test
     fun `assigning a value of a different type fails`() {
-        val env = Environment()
+        val env = Environment<Value>()
         env.declare("x", Type.NumberType, mutable = true, span)
 
-        val error = errorOf(env.assign("x", Value.StringValue("nope"), span))
+        val error =
+            errorOf(
+                env.assign("x", Value.StringValue("nope"), Value.StringValue("nope").type, span),
+            )
 
         assertEquals(
             Diagnostic.IncompatibleAssignment(
@@ -145,10 +157,11 @@ class EnvironmentTest {
 
     @Test
     fun `initializing with a different type fails`() {
-        val env = Environment()
+        val env = Environment<Value>()
         env.declare("s", Type.StringType, mutable = true, span)
 
-        val error = errorOf(env.initialize("s", Value.NumberValue(3.0), span))
+        val error =
+            errorOf(env.initialize("s", Value.NumberValue(3.0), Value.NumberValue(3.0).type, span))
 
         assertEquals(
             Diagnostic.IncompatibleAssignment(
@@ -163,7 +176,7 @@ class EnvironmentTest {
 
     @Test
     fun `an error carries the span it was reported over`() {
-        val env = Environment()
+        val env = Environment<Value>()
         val where = Span(Position(7, 12), Position(7, 13))
 
         val error = errorOf(env.lookup("x", where))

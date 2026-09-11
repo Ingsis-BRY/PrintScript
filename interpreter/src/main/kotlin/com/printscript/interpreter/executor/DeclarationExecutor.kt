@@ -28,7 +28,7 @@ object DeclarationExecutor : StatementExecutor {
                         .evaluate(initializer, declaration.declaredType)
                         .flatMap { value ->
                             context.environment
-                                .initialize(declaration.name, value, declaration.span)
+                                .initialize(declaration.name, value, value.type, declaration.span)
                         }
                 }
         }

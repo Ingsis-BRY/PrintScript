@@ -15,7 +15,7 @@ object AssignmentExecutor : StatementExecutor {
             val expected = context.environment.declaredTypeOf(assignment.name)
 
             context.evaluate(assignment.value, expected).flatMap { value ->
-                context.environment.assign(assignment.name, value, assignment.span)
+                context.environment.assign(assignment.name, value, value.type, assignment.span)
             }
         }
 }

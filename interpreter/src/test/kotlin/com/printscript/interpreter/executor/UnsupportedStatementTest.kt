@@ -5,10 +5,10 @@ import com.printscript.ast.Statement
 import com.printscript.ast.Type
 import com.printscript.common.Position
 import com.printscript.interpreter.CollectingOutput
-import com.printscript.interpreter.Environment
 import com.printscript.interpreter.Interpreter
 import com.printscript.interpreter.Value
 import com.printscript.interpreter.ValueOps
+import com.printscript.language.Environment
 import com.printscript.report.Diagnostic
 import com.printscript.report.Failure
 import com.printscript.report.Result
@@ -33,7 +33,7 @@ class UnsupportedStatementTest {
     fun `a statement no executor claims is reported instead of thrown`() {
         val interpreter =
             Interpreter(
-                globalScope = Environment(),
+                globalScope = Environment<Value>(),
                 output = CollectingOutput(),
                 valueOps = ValueOps(),
                 executors = emptyList(),
@@ -58,7 +58,7 @@ class UnsupportedStatementTest {
     }
 
     private class StubContext : ExecutionContext {
-        override val environment: Environment = Environment()
+        override val environment: Environment<Value> = Environment<Value>()
 
         override fun evaluate(
             expression: Expression,
