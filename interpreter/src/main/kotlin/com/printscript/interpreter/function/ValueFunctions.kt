@@ -25,7 +25,7 @@ object ValueFunctions {
             context.emit(prompt)
 
             val answer =
-                input.read(prompt)
+                input.read()
                     ?: return@ValueFunction Failure(Diagnostic.MissingInput(span))
 
             coerce(answer, expected, span)

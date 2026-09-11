@@ -25,7 +25,7 @@ internal class QueuedInput(
 ) : InputProvider {
     private val remaining = ArrayDeque(answers)
 
-    override fun read(prompt: String): String? = remaining.removeFirstOrNull()
+    override fun read(): String? = remaining.removeFirstOrNull()
 }
 
 internal class FixedEnvironment(

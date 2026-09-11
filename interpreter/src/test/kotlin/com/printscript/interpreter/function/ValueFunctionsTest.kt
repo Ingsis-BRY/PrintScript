@@ -5,12 +5,12 @@ import com.printscript.ast.Statement
 import com.printscript.ast.Type
 import com.printscript.common.Position
 import com.printscript.common.Span
-import com.printscript.interpreter.Environment
 import com.printscript.interpreter.EnvironmentSource
 import com.printscript.interpreter.InputProvider
 import com.printscript.interpreter.NoInput
 import com.printscript.interpreter.Value
 import com.printscript.interpreter.executor.ExecutionContext
+import com.printscript.language.Environment
 import com.printscript.report.Diagnostic
 import com.printscript.report.Failure
 import com.printscript.report.Result
@@ -26,7 +26,7 @@ class ValueFunctionsTest {
     private class RecordingContext : ExecutionContext {
         val emitted = mutableListOf<String>()
 
-        override val environment = Environment()
+        override val environment = Environment<Value>()
 
         override fun evaluate(
             expression: Expression,
@@ -209,6 +209,6 @@ class ValueFunctionsTest {
 
     @Test
     fun `the empty provider always has nothing`() {
-        assertEquals(null, NoInput.read("anything"))
+        assertEquals(null, NoInput.read())
     }
 }
