@@ -167,4 +167,58 @@ class BlockAndCallLintingTest {
 
         assertEquals(1, report.findings.size)
     }
+
+    @Test
+    fun `println called with a call is reported`() {
+        val call =
+            Expression.FunctionCall(
+                "readInput",
+                Expression.StringLiteral("x", at, at),
+                at,
+                at,
+            )
+        val println = Statement.CallStatement("println", call, at, at)
+
+        val report = Linter(printlnRule).lint(listOf(println))
+
+        assertEquals(1, report.findings.size)
+        assertIs<LintFinding.InvalidPrintlnArgument>(report.findings.first())
+    }
+
+    @Test
+    fun `readInput called with a call is reported`() {
+        val inner =
+            Expression.FunctionCall(
+                "readEnv",
+                Expression.StringLiteral("X", at, at),
+                at,
+                at,
+            )
+        val outer = Expression.FunctionCall("readInput", inner, at, at)
+
+        val report = Linter(readInputRule).lint(listOf(declare("input", outer)))
+
+        assertEquals(1, report.findings.size)
+        assertIs<LintFinding.InvalidReadInputArgument>(report.findings.first())
+    }
+
+    @Test
+    fun `every kind of literal is allowed as an argument`() {
+        val literals =
+            listOf(
+                Expression.NumberLiteral(1.0, at, at),
+                Expression.StringLiteral("x", at, at),
+                Expression.BooleanLiteral(true, at, at),
+                name("someName"),
+            )
+
+        for (literal in literals) {
+            val println = Statement.CallStatement("println", literal, at, at)
+
+            assertTrue(
+                Linter(printlnRule).lint(listOf(println)).isClean,
+                "$literal should be allowed",
+            )
+        }
+    }
 }

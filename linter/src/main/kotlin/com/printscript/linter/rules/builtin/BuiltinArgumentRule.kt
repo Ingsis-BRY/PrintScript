@@ -42,5 +42,15 @@ class BuiltinArgumentRule(
         }
 
     private fun isAllowed(expression: Expression): Boolean =
-        expression !is Expression.BinaryExpression
+        when (expression) {
+            is Expression.VariableReference,
+            is Expression.NumberLiteral,
+            is Expression.StringLiteral,
+            is Expression.BooleanLiteral,
+            -> true
+
+            is Expression.BinaryExpression,
+            is Expression.FunctionCall,
+            -> false
+        }
 }
