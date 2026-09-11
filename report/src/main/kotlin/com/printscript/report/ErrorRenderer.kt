@@ -89,6 +89,13 @@ class ErrorRenderer {
 
             is Diagnostic.MissingEnvironmentVariable ->
                 "Environment variable '${error.name}' is not defined."
+
+            is Diagnostic.IncompatibleArgument ->
+                "Cannot pass a ${describe(error.actual)} to '${error.name}', " +
+                    "which expects a ${describe(error.expected)}."
+
+            is Diagnostic.NonVariableCondition ->
+                "An 'if' condition must be a variable."
         }
 
     private fun describe(fault: LexicalFault): String =

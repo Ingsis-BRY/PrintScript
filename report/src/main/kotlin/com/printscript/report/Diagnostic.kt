@@ -159,6 +159,17 @@ sealed interface Diagnostic {
         val name: String,
         override val span: Span,
     ) : Diagnostic
+
+    data class IncompatibleArgument(
+        val name: String,
+        val expected: Type,
+        val actual: Type,
+        override val span: Span,
+    ) : Diagnostic
+
+    data class NonVariableCondition(
+        override val span: Span,
+    ) : Diagnostic
 }
 
 /**
