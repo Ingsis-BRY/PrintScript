@@ -42,7 +42,7 @@ class PrintScriptCommand(
     @Parameters(
         index = "0",
         paramLabel = "OPERATION",
-        description = ["validation, execution o formatting"],
+        description = ["validation, execution, formatting o analyzing"],
     )
     lateinit var operation: Operation
 
