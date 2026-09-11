@@ -8,6 +8,7 @@ import com.printscript.parser.ParsingSupport.parseLeftBrace
 import com.printscript.parser.ParsingSupport.parseLeftParen
 import com.printscript.parser.ParsingSupport.parseRightBrace
 import com.printscript.parser.ParsingSupport.parseRightParen
+import com.printscript.report.Diagnostic
 import com.printscript.report.Failure
 import com.printscript.report.Result
 import com.printscript.report.Success
@@ -47,7 +48,13 @@ object IfSyntax : StatementSyntax {
     private fun parseCondition(context: ParsingContext): Result<Expression> =
         parseLeftParen(context.cursor).flatMap {
             context.parseExpression().flatMap { condition ->
-                parseRightParen(context.cursor).map { condition }
+                parseRightParen(context.cursor).flatMap {
+                    if (condition is Expression.VariableReference) {
+                        Success(condition)
+                    } else {
+                        Failure(Diagnostic.NonVariableCondition(condition.span))
+                    }
+                }
             }
         }
 

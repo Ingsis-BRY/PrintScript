@@ -223,4 +223,27 @@ class BlockAndCallParsingTest {
             parse11("let x: number = 5 + 4 * 3;"),
         )
     }
+
+    @Test
+    fun `a condition that is not a variable is refused`() {
+        assertIs<Diagnostic.NonVariableCondition>(error11("if (true) { }"))
+        assertIs<Diagnostic.NonVariableCondition>(error11("if (a + b) { }"))
+        assertIs<Diagnostic.NonVariableCondition>(error11("""if (readInput("q")) { }"""))
+        assertIs<Diagnostic.NonVariableCondition>(error11("if (1) { }"))
+    }
+
+    @Test
+    fun `the refused condition is blamed over its own span`() {
+        val error = assertIs<Diagnostic.NonVariableCondition>(error11("if (true) { }"))
+
+        assertEquals(5, error.span.start.column)
+        assertEquals(8, error.span.end.column)
+    }
+
+    @Test
+    fun `a variable is the only condition the grammar takes`() {
+        val conditional = assertIs<Statement.IfStatement>(statement11("if (flag) { }"))
+
+        assertEquals("flag", assertIs<Expression.VariableReference>(conditional.condition).name)
+    }
 }
