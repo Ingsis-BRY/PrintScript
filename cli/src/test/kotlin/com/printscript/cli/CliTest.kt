@@ -90,12 +90,14 @@ class CliTest {
         results: List<Result<Statement>>,
         failAt: Int? = null,
         formatting: Result<Unit> = Success(Unit),
+        checkFailAt: Int? = null,
     ) {
         val progress = StringBuilder()
         val errors = StringBuilder()
         val formatted = StringBuilder()
         val findings = StringBuilder()
         val program = RecordingProgram(failAt, divisionByZero)
+        val checker = RecordingProgram(checkFailAt, divisionByZero)
         val analyzer = RecordingAnalyzer()
         val statements = FakeStatements(results)
         val formatting = RecordingFormatting(formatting, formatted)
@@ -104,6 +106,7 @@ class CliTest {
             Cli(
                 newStatements = { statements },
                 newProgram = { program },
+                newChecker = { checker },
                 newFormatting = { this.formatting },
                 newAnalyzer = { analyzer },
                 renderer = ErrorRenderer(),
@@ -158,14 +161,37 @@ class CliTest {
     }
 
     @Test
-    fun `validation walks the statements without running any`() {
+    fun `validation checks every statement without running any`() {
         val run = Run(succeeding(3))
 
         val result = run.cli.run(Operation.VALIDATION, anyFile)
 
         assertIs<Success<Unit>>(result)
         assertTrue(run.program.executed.isEmpty(), "validation must not execute")
+        assertEquals(3, run.checker.executed.size, "validation must check every statement")
         assertEquals(3, run.progress.lines().count { it.isNotBlank() })
+    }
+
+    @Test
+    fun `validation reports what the checker rejects and stops`() {
+        val run = Run(succeeding(3), checkFailAt = 2)
+
+        val result = run.cli.run(Operation.VALIDATION, anyFile)
+
+        assertIs<Failure>(result)
+        assertContains(run.errors.toString(), "Division by zero.")
+        assertEquals(2, run.checker.executed.size, "it must stop at the first rejection")
+        assertTrue(run.program.executed.isEmpty(), "validation must not execute")
+    }
+
+    @Test
+    fun `execution does not run the checker`() {
+        val run = Run(succeeding(2))
+
+        run.cli.run(Operation.EXECUTION, anyFile)
+
+        assertTrue(run.checker.executed.isEmpty(), "execution must not check twice")
+        assertEquals(2, run.program.executed.size)
     }
 
     @Test

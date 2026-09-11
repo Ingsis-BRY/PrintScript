@@ -1,6 +1,8 @@
 package com.printscript.app
 
 import com.printscript.interpreter.CollectingOutput
+import com.printscript.interpreter.EnvironmentSource
+import com.printscript.interpreter.InputProvider
 import picocli.CommandLine
 import java.io.PrintWriter
 import java.io.StringWriter
@@ -10,13 +12,23 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class PrintScriptCommandTest {
-    private class Run {
+    private class Run(
+        input: InputProvider = InputProvider { null },
+        environment: EnvironmentSource = EnvironmentSource { null },
+    ) {
         val output = CollectingOutput()
         val out = StringBuilder()
         val errors = StringBuilder()
         val usage = StringWriter()
 
-        private val command = PrintScriptCommand(output, out, errors)
+        private val command =
+            PrintScriptCommand(
+                output = output,
+                input = input,
+                environment = environment,
+                out = out,
+                errors = errors,
+            )
 
         fun execute(vararg args: String): Int =
             CommandLine(command)

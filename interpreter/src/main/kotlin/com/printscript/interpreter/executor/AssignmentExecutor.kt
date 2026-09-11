@@ -12,8 +12,10 @@ object AssignmentExecutor : StatementExecutor {
         context: ExecutionContext,
     ): Result<Unit> =
         statement.narrow<Statement.Assignment> { assignment ->
-            context.evaluate(assignment.value).flatMap { value ->
-                context.environment.assign(assignment.name, value, assignment.span)
+            val expected = context.environment.declaredTypeOf(assignment.name)
+
+            context.evaluate(assignment.value, expected).flatMap { value ->
+                context.environment.assign(assignment.name, value, value.type, assignment.span)
             }
         }
 }

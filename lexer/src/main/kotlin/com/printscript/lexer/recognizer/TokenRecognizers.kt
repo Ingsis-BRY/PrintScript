@@ -1,11 +1,17 @@
 package com.printscript.lexer.recognizer
 
 import com.printscript.token.Token.AssignToken
+import com.printscript.token.Token.BooleanLiteralToken
 import com.printscript.token.Token.ColonToken
+import com.printscript.token.Token.ConstToken
+import com.printscript.token.Token.ElseToken
+import com.printscript.token.Token.IfToken
+import com.printscript.token.Token.LeftBraceToken
 import com.printscript.token.Token.LeftParenToken
 import com.printscript.token.Token.LetToken
 import com.printscript.token.Token.MinusToken
 import com.printscript.token.Token.PlusToken
+import com.printscript.token.Token.RightBraceToken
 import com.printscript.token.Token.RightParenToken
 import com.printscript.token.Token.SemicolonToken
 import com.printscript.token.Token.SlashToken
@@ -27,9 +33,9 @@ import com.printscript.token.Token.TypeNameToken
  * is one entry here plus its recognizer; nothing existing changes.
  */
 object TokenRecognizers {
-    val DEFAULT: List<TokenRecognizer> =
+    // fixed one-character literals, none a prefix of another
+    private val SYMBOLS: List<TokenRecognizer> =
         listOf(
-            // fixed one-character literals, none a prefix of another
             FixedLexemeRecognizer(":", ::ColonToken),
             FixedLexemeRecognizer("=", ::AssignToken),
             FixedLexemeRecognizer(";", ::SemicolonToken),
@@ -39,13 +45,45 @@ object TokenRecognizers {
             FixedLexemeRecognizer("/", ::SlashToken),
             FixedLexemeRecognizer("(", ::LeftParenToken),
             FixedLexemeRecognizer(")", ::RightParenToken),
-            // reserved words, ahead of the identifier so they win an equal-length tie
+        )
+
+    private val BRACES: List<TokenRecognizer> =
+        listOf(
+            FixedLexemeRecognizer("{", ::LeftBraceToken),
+            FixedLexemeRecognizer("}", ::RightBraceToken),
+        )
+
+    // reserved words, ahead of the identifier so they win an equal-length tie
+    private val WORDS: List<TokenRecognizer> =
+        listOf(
             FixedLexemeRecognizer("let", ::LetToken),
             FixedLexemeRecognizer("number", ::TypeNameToken),
             FixedLexemeRecognizer("string", ::TypeNameToken),
-            // open recognizers, the only ones whose automaton has a real loop
+        )
+
+    private val WORDS_ADDED_IN_1_1: List<TokenRecognizer> =
+        listOf(
+            FixedLexemeRecognizer("const", ::ConstToken),
+            FixedLexemeRecognizer("if", ::IfToken),
+            FixedLexemeRecognizer("else", ::ElseToken),
+            FixedLexemeRecognizer("boolean", ::TypeNameToken),
+            FixedLexemeRecognizer("true") { lexeme, start, end ->
+                BooleanLiteralToken(lexeme, true, start, end)
+            },
+            FixedLexemeRecognizer("false") { lexeme, start, end ->
+                BooleanLiteralToken(lexeme, false, start, end)
+            },
+        )
+
+    // open recognizers, the only ones whose automaton has a real loop
+    private val OPEN: List<TokenRecognizer> =
+        listOf(
             IdentifierRecognizer,
             NumberLiteralRecognizer,
             StringLiteralRecognizer,
         )
+
+    val V1_0: List<TokenRecognizer> = SYMBOLS + WORDS + OPEN
+
+    val V1_1: List<TokenRecognizer> = SYMBOLS + BRACES + WORDS + WORDS_ADDED_IN_1_1 + OPEN
 }

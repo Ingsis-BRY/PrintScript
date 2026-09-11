@@ -41,13 +41,21 @@ class Formatter(
         cursor: Cursor,
         next: Token,
     ): String {
-        val previous = cursor.previous ?: return leadingGap(next)
+        val previous = cursor.previous ?: return indented(leadingGap(next), cursor, next)
 
-        return if (previous is Token.SemicolonToken) {
-            betweenStatements(previous, next, cursor.printlnStatement)
-        } else {
-            withinStatement(previous, next)
-        }
+        val gap =
+            when {
+                previous is Token.SemicolonToken ->
+                    betweenStatements(previous, next, cursor.printlnStatement)
+
+                touchesBrace(previous, next) ->
+                    aroundBraces(previous, next)
+
+                else ->
+                    withinStatement(previous, next)
+            }
+
+        return indented(gap, cursor, next)
     }
 
     private fun leadingGap(next: Token): String = originalGap(FIRST_LINE, BEFORE_FIRST_COLUMN, next)
@@ -66,6 +74,26 @@ class Formatter(
         }
     }
 
+    private fun touchesBrace(
+        previous: Token,
+        next: Token,
+    ): Boolean =
+        previous is Token.LeftBraceToken ||
+            previous is Token.RightBraceToken ||
+            next is Token.LeftBraceToken ||
+            next is Token.RightBraceToken
+
+    private fun aroundBraces(
+        previous: Token,
+        next: Token,
+    ): String =
+        when {
+            next !is Token.LeftBraceToken -> originalGap(previous, next)
+            config.braceSameLineAsIf -> SPACE
+            config.braceBelowIfLine -> LINE_BREAK
+            else -> originalGap(previous, next)
+        }
+
     private fun withinStatement(
         previous: Token,
         next: Token,
@@ -79,6 +107,29 @@ class Formatter(
             config.singleSpaceSeparation -> SPACE
             else -> originalGap(previous, next)
         }
+
+    private fun indented(
+        gap: String,
+        cursor: Cursor,
+        next: Token,
+    ): String {
+        val width = config.indentInsideBlock ?: return gap
+
+        val lastBreak = gap.lastIndexOf(LINE_BREAK)
+
+        if (lastBreak < 0) {
+            return gap
+        }
+
+        val level =
+            if (next is Token.RightBraceToken) {
+                (cursor.depth - 1).coerceAtLeast(0)
+            } else {
+                cursor.depth
+            }
+
+        return gap.substring(0, lastBreak + 1) + SPACE.repeat(width * level)
+    }
 
     private fun assignmentRuleApplies(
         previous: Token,
@@ -103,15 +154,21 @@ class Formatter(
             -> true
 
             is Token.LetToken,
+            is Token.ConstToken,
+            is Token.IfToken,
+            is Token.ElseToken,
             is Token.IdentifierToken,
             is Token.TypeNameToken,
             is Token.NumberLiteralToken,
             is Token.StringLiteralToken,
+            is Token.BooleanLiteralToken,
             is Token.AssignToken,
             is Token.ColonToken,
             is Token.SemicolonToken,
             is Token.LeftParenToken,
             is Token.RightParenToken,
+            is Token.LeftBraceToken,
+            is Token.RightBraceToken,
             -> false
         }
 
@@ -138,17 +195,30 @@ class Formatter(
 private data class Cursor(
     val previous: Token?,
     val printlnStatement: Boolean,
+    val depth: Int,
 ) {
     fun advance(token: Token): Cursor =
         Cursor(
             previous = token,
             printlnStatement = if (opensStatement()) token.opensPrintln() else printlnStatement,
+            depth = depthAfter(token),
         )
 
-    private fun opensStatement(): Boolean = previous == null || previous is Token.SemicolonToken
+    private fun depthAfter(token: Token): Int =
+        when (token) {
+            is Token.LeftBraceToken -> depth + 1
+            is Token.RightBraceToken -> (depth - 1).coerceAtLeast(0)
+            else -> depth
+        }
+
+    private fun opensStatement(): Boolean =
+        previous == null ||
+            previous is Token.SemicolonToken ||
+            previous is Token.LeftBraceToken ||
+            previous is Token.RightBraceToken
 
     companion object {
-        val START = Cursor(previous = null, printlnStatement = false)
+        val START = Cursor(previous = null, printlnStatement = false, depth = 0)
     }
 }
 

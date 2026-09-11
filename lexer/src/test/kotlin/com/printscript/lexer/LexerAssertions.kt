@@ -12,7 +12,7 @@ import kotlin.test.fail
  * Lexes [source] in full, keeping both tokens and errors.
  */
 internal fun resultsOf(source: String): List<Result<Token>> =
-    Lexer(StringSourceReader(source), TokenRecognizers.DEFAULT).tokens().toList()
+    Lexer(StringSourceReader(source), TokenRecognizers.V1_0).tokens().toList()
 
 /**
  * Lexes [source], failing the test if any error shows up.

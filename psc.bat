@@ -4,8 +4,6 @@ rem Runs the installed distribution, so there is no Gradle overhead and the
 rem exit code is the program's own rather than a BUILD FAILED wrapper.
 rem Rebuild after changing compiler code: gradlew :app:installDist
 
-if not defined PRINTSCRIPT_JDK set "PRINTSCRIPT_JDK=C:\Users\agusr\.jdks\corretto-25.0.2"
-
 set "DIST=%~dp0app\build\install\printscript\bin\printscript.bat"
 
 if not exist "%DIST%" (
@@ -13,5 +11,14 @@ if not exist "%DIST%" (
   exit /b 3
 )
 
-set "JAVA_HOME=%PRINTSCRIPT_JDK%"
+if defined PRINTSCRIPT_JDK set "JAVA_HOME=%PRINTSCRIPT_JDK%"
+if defined JAVA_HOME goto :run
+
+where java >nul 2>&1
+if errorlevel 1 (
+  echo No Java found. Set JAVA_HOME or PRINTSCRIPT_JDK to a JDK 21 or newer.
+  exit /b 3
+)
+
+:run
 call "%DIST%" %*

@@ -8,4 +8,6 @@ dependencies {
     api(project(":token"))
     implementation(project(":language"))
     api(project(":report"))
+
+    testImplementation(project(":lexer"))
 }

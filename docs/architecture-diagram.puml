@@ -5,7 +5,7 @@
 ' ============================================================
 
 @startuml componentes
-title PrintScript — Componentes (11 modulos Gradle)
+title PrintScript — Componentes (14 modulos Gradle)
 
 package "PrintScript" {
     [common]      <<modulo>>
@@ -19,6 +19,7 @@ package "PrintScript" {
     [pipeline]    <<modulo>>
     [formatter]   <<modulo>>
     [linter]      <<modulo>>
+    [checker]     <<modulo>>
     [cli]         <<modulo>>
     [app]         <<modulo>>
 }
@@ -37,16 +38,26 @@ note right of [report]
 end note
 
 note right of [language]
-  Que significa "number" en PrintScript
-  y que devuelve cada operador.
-  Unica fuente de verdad.
+  Que significa "number" en PrintScript,
+  que devuelve cada operador, y como
+  se alcanzan las variables (Environment<V>).
+  Unica fuente de verdad, compartida por
+  parser, interprete y checker.
+end note
+
+note right of [checker]
+  El gemelo del interprete a nivel de tipos:
+  contesta que TIPO tiene una expresion, sin
+  ejecutar nada. Es lo que hace que validation
+  valide semantica y no solo sintaxis.
 end note
 
 note right of [pipeline]
   Entrega un statement por vez.
-  Declara TokenSource y StatementParser,
-  asi que NO depende de lexer ni de parser:
-  las interfaces viven en el consumidor.
+  Declara TokenSource, StatementParser y
+  StatementBoundary, asi que NO depende de
+  lexer ni de parser: las interfaces viven
+  en el consumidor.
 end note
 
 note right of [formatter]
@@ -69,9 +80,24 @@ end note
 
 note right of [app]
   El composition root, en su propio modulo.
-  Es el unico que depende de :lexer, :parser e
-  :interpreter, asi que la regla la hace cumplir
-  Gradle y no la convencion.
+  Es el unico que depende de :lexer, :parser,
+  :interpreter y :checker, asi que la regla la
+  hace cumplir Gradle y no la convencion.
+  Aca vive Dialect: armar una version significa
+  nombrar implementaciones de cinco modulos.
+end note
+
+note as VERSIONES
+  **Una version no es un flag: es que entradas
+  tiene cada catalogo.**
+  lexer       -> TokenRecognizers.V1_0 / V1_1
+  parser      -> StatementSyntaxes + PrefixParselets
+  pipeline    -> StatementBoundaries
+  interpreter -> StatementExecutors + ValueFunctions
+  checker     -> FunctionSignatures
+  Los strings "1.0" y "1.1" solo aparecen en
+  Dialect.kt. Ningun otro modulo sabe que las
+  versiones existen.
 end note
 
 [token]       --> [common]
@@ -79,6 +105,11 @@ end note
 
 [report]      --> [common]
 [report]      --> [ast]
+
+[checker]     --> [common]
+[checker]     --> [ast]
+[checker]     --> [language]
+[checker]     --> [report]
 
 [language]    --> [common]
 [language]    --> [ast]
@@ -120,6 +151,7 @@ end note
 [app]         --> [lexer]
 [app]         --> [parser]
 [app]         --> [interpreter]
+[app]         --> [checker]
 [app]         --> [formatter]
 [app]         --> [linter]
 
@@ -223,12 +255,39 @@ package report {
         +name: String
     }
     class DivisionByZero implements Diagnostic
+    class UnsupportedStatement implements Diagnostic
+
+    ' agregados en 1.1
+    class NonBooleanCondition implements Diagnostic {
+        +actual: Type
+    }
+    class NonVariableCondition implements Diagnostic
+    class ConstantReassignment implements Diagnostic {
+        +name: String
+    }
+    class UninterpretableInput implements Diagnostic {
+        +text: String
+        +expected: Type
+    }
+    class IncompatibleArgument implements Diagnostic {
+        +name: String
+        +expected: Type
+        +actual: Type
+    }
+    class MissingInput implements Diagnostic
+    class MissingEnvironmentVariable implements Diagnostic {
+        +name: String
+    }
 
     enum LexicalFault {
         UNTERMINATED_STRING
     }
     enum SyntaxSymbol {
         LET
+        CONST
+        IF
+        LEFT_BRACE
+        RIGHT_BRACE
         IDENTIFIER
         COLON
         TYPE_NAME
@@ -281,6 +340,16 @@ package token {
     class SlashToken implements Token
     class LeftParenToken implements Token
     class RightParenToken implements Token
+
+    ' agregados en 1.1
+    class ConstToken implements Token
+    class IfToken implements Token
+    class ElseToken implements Token
+    class BooleanLiteralToken implements Token {
+        +value: Boolean
+    }
+    class LeftBraceToken implements Token
+    class RightBraceToken implements Token
 }
 
 ' ------------------------------------------------------------
@@ -295,7 +364,16 @@ package ast {
         +name: String
         +declaredType: Type
         +initializer: Expression?
+        +mutable: Boolean
     }
+
+    note right of VariableDeclaration
+      `mutable` es lo unico que distingue un
+      `let` de un `const`: la palabra ya no
+      existe cuando el statement si, y la
+      reasignacion que hay que rechazar pasa
+      mas tarde y en otro lado
+    end note
     class Assignment implements Statement {
         +name: String
         +value: Expression
@@ -303,6 +381,12 @@ package ast {
     class CallStatement implements Statement {
         +callee: String
         +argument: Expression
+    }
+
+    class IfStatement implements Statement {
+        +condition: Expression
+        +consequence: List<Statement>
+        +alternative: List<Statement>?
     }
 
     class NumberLiteral implements Expression {
@@ -320,6 +404,21 @@ package ast {
         +right: Expression
     }
 
+    class BooleanLiteral implements Expression {
+        +value: Boolean
+    }
+
+    class FunctionCall implements Expression {
+        +callee: String
+        +argument: Expression
+    }
+
+    note right of FunctionCall
+      una llamada que **da un valor**
+      (readInput, readEnv), a diferencia de
+      CallStatement, que se hace por su efecto
+    end note
+
     interface BinaryOperator <<sealed>>
     class Addition       implements BinaryOperator
     class Subtraction    implements BinaryOperator
@@ -329,6 +428,7 @@ package ast {
     interface Type <<sealed>>
     class NumberType implements Type
     class StringType implements Type
+    class BooleanType implements Type
 }
 
 ' ------------------------------------------------------------
@@ -346,6 +446,38 @@ package language {
     note bottom of OperatorRules
       devuelve null, no un error:
       no tiene posicion que culpar
+    end note
+
+    class Environment<V> {
+        -parent: Environment<V>?
+        -slots: MutableMap<String, Slot<V>>
+        +child(): Environment<V>
+        +declare(name, type, mutable, span): Result<Unit>
+        +initialize(name, value: V, type, span): Result<Unit>
+        +assign(name, value: V, type, span): Result<Unit>
+        +lookup(name, span): Result<V>
+        +typeOf(name, span): Result<Type>
+        +declaredTypeOf(name): Type?
+    }
+
+    interface Slot<V> <<sealed>>
+    class Declared implements Slot {
+        +type: Type
+        +mutable: Boolean
+    }
+    class Bound<V> implements Slot {
+        +value: V
+    }
+
+    Environment o--> Slot
+
+    note bottom of Environment
+      el store de variables y sus reglas de
+      alcance, compartido: el interprete lo
+      instancia con Value, el checker con Unit.
+      el tipo se pasa en cada bind en vez de
+      leerse del V, porque un store que sepa
+      tipar su contenido no podria guardar Unit
     end note
 }
 
@@ -391,12 +523,18 @@ package lexer {
     interface RecognizerState <<sealed>>
 
     class TokenRecognizers <<object>> {
-        +DEFAULT: List<TokenRecognizer>
+        +V1_0: List<TokenRecognizer>
+        +V1_1: List<TokenRecognizer>
     }
 
     note bottom of Lexer
       maximal munch: gana el lexema mas largo;
-      si empatan, el orden de TokenRecognizers.DEFAULT
+      si empatan, el orden del catalogo.
+      **Un catalogo por version**: V1_0 no tiene
+      recognizer para const, if, else, boolean,
+      true/false ni llaves, asi que esas palabras
+      salen como identificadores y el parser las
+      rechaza donde esperaba un statement
     end note
 }
 
@@ -405,6 +543,7 @@ package parser {
 
     class Parser {
         -syntaxes: List<StatementSyntax>
+        -parselets: List<PrefixParselet>
         +parse(tokens: List<Token>): Result<Statement>
     }
 
@@ -416,15 +555,62 @@ package parser {
     interface ParsingContext {
         +cursor: TokenCursor
         +parseExpression(): Result<Expression>
+        +parseStatement(): Result<Statement>
     }
 
-    class VariableDeclarationSyntax <<object>> implements StatementSyntax
+    note right of ParsingContext
+      parseStatement es lo que deja que un bloque
+      tenga statements sin que IfSyntax nombre al
+      despachador que construye el catalogo
+      donde vive
+    end note
+
+    class VariableDeclarationSyntax implements StatementSyntax
     class AssignmentSyntax <<object>> implements StatementSyntax
     class CallSyntax implements StatementSyntax
+    class IfSyntax <<object>> implements StatementSyntax
 
     class StatementSyntaxes <<object>> {
-        +DEFAULT: List<StatementSyntax>
+        +V1_0: List<StatementSyntax>
+        +V1_1: List<StatementSyntax>
     }
+
+    ' el tercer registro: que puede *abrir* una expresion
+    interface PrefixParselet {
+        +matches(token: Token): Boolean
+        +parse(token: Token, context: ExpressionContext): Result<Expression>
+    }
+
+    interface ExpressionContext {
+        +cursor: TokenCursor
+        +parseExpression(): Result<Expression>
+    }
+
+    class NumberLiteralParselet <<object>> implements PrefixParselet
+    class StringLiteralParselet <<object>> implements PrefixParselet
+    class BooleanLiteralParselet <<object>> implements PrefixParselet
+    class VariableReferenceParselet <<object>> implements PrefixParselet
+    class GroupParselet <<object>> implements PrefixParselet
+    class FunctionCallParselet implements PrefixParselet
+
+    class PrefixParselets <<object>> {
+        +V1_0: List<PrefixParselet>
+        +V1_1: List<PrefixParselet>
+    }
+
+    note bottom of PrefixParselets
+      los operadores infijos **no** son parselets:
+      su precedencia es una tabla que un solo loop
+      lee, asi que no hay comportamiento por
+      operador que registrar. lo que si crece con
+      el lenguaje es que puede abrir una expresion
+    end note
+
+    note bottom of IfSyntax
+      la condicion tiene que ser una
+      VariableReference, como pide la consigna;
+      cualquier otra cosa da NonVariableCondition
+    end note
 
     class StatementParser {
         -syntaxes: List<StatementSyntax>
@@ -455,12 +641,20 @@ package parser {
 package interpreter {
 
     class Interpreter {
-        -environment: Environment
+        -globalScope: Environment<Value>
         -output: OutputEmitter
         -valueOps: ValueOps
         -executors: List<StatementExecutor>
+        -functions: Map<String, ValueFunction>
         +execute(statement: Statement): Result<Unit>
     }
+
+    note bottom of Interpreter
+      el scope viaja como argumento, no como
+      campo: cada bloque recibe su propio Context,
+      asi no hay nada que restaurar y un fallo no
+      puede dejar el scope equivocado puesto
+    end note
 
     interface StatementExecutor {
         +matches(statement: Statement): Boolean
@@ -468,25 +662,70 @@ package interpreter {
     }
 
     interface ExecutionContext {
-        +environment: Environment
-        +evaluate(expression: Expression): Result<Value>
+        +environment: Environment<Value>
+        +evaluate(expression: Expression, expected: Type?): Result<Value>
+        +executeBlock(statements: List<Statement>): Result<Unit>
         +emit(line: String)
     }
+
+    note right of ExecutionContext
+      `expected` es el tipo que el resultado tiene
+      que llenar. casi toda expresion lo ignora;
+      readInput y readEnv son la excepcion, porque
+      lo que devuelven es texto hasta que algo dice
+      que se suponia que era
+    end note
 
     class DeclarationExecutor <<object>> implements StatementExecutor
     class AssignmentExecutor <<object>> implements StatementExecutor
     class CallExecutor implements StatementExecutor
+    class IfExecutor <<object>> implements StatementExecutor
 
     class StatementExecutors <<object>> {
-        +DEFAULT: List<StatementExecutor>
+        +V1_0: List<StatementExecutor>
+        +V1_1: List<StatementExecutor>
     }
+
+    interface ValueFunction <<fun>> {
+        +call(argument: Value, expected: Type?, span: Span, context): Result<Value>
+    }
+
+    class ValueFunctions <<object>> {
+        +NONE: Map<String, ValueFunction>
+        +readers(input, environment): Map<String, ValueFunction>
+    }
+
+    interface InputProvider <<fun>> {
+        +read(): String?
+    }
+    class ConsoleInput <<object>> implements InputProvider
+    class NoInput <<object>> implements InputProvider
+
+    interface EnvironmentSource <<fun>> {
+        +read(name: String): String?
+    }
+    class SystemEnvironment <<object>> implements EnvironmentSource
+
+    ValueFunctions ..> ValueFunction : registro por nombre
+    ValueFunctions --> InputProvider
+    ValueFunctions --> EnvironmentSource
+
+    note bottom of ValueFunctions
+      readers es una fabrica y no una constante:
+      readInput y readEnv necesitan colaboradores
+      que recien existen cuando la corrida tiene
+      de donde leer. el prompt sale por el mismo
+      emitter que println: es salida, y el
+      programa tiene una sola
+    end note
 
     interface Builtin <<fun>> {
         +call(argument: Value, span: Span, context: ExecutionContext): Result<Unit>
     }
 
     class Builtins <<object>> {
-        +DEFAULT: Map<String, Builtin>
+        +V1_0: Map<String, Builtin>
+        +V1_1: Map<String, Builtin>
     }
 
     note bottom of StatementExecutors
@@ -494,22 +733,6 @@ package interpreter {
       StatementExecutorsTest verifica que cubra
       todo el sealed hierarchy de Statement
     end note
-
-    class Environment {
-        -slots: MutableMap<String, Slot>
-        +declare(name: String, type: Type, span: Span): Result<Unit>
-        +initialize(name: String, value: Value, span: Span): Result<Unit>
-        +assign(name: String, value: Value, span: Span): Result<Unit>
-        +lookup(name: String, span: Span): Result<Value>
-    }
-
-    interface Slot <<sealed>>
-    class Declared implements Slot {
-        +type: Type
-    }
-    class Bound implements Slot {
-        +value: Value
-    }
 
     interface Value <<sealed>> {
         +type: Type
@@ -519,6 +742,9 @@ package interpreter {
     }
     class StringValue implements Value {
         +value: String
+    }
+    class BooleanValue implements Value {
+        +value: Boolean
     }
 
     class ValueOps {
@@ -535,6 +761,43 @@ package interpreter {
 }
 
 ' ------------------------------------------------------------
+package checker {
+
+    class Checker {
+        -globalScope: Environment<Unit>
+        -signatures: Map<String, Signature>
+        -builtins: Set<String>
+        +check(statement: Statement): Result<Unit>
+    }
+
+    class Signature {
+        +argument: Type
+    }
+
+    class FunctionSignatures <<object>> {
+        +NONE: Map<String, Signature>
+        +V1_1: Map<String, Signature>
+    }
+
+    Checker o--> Signature
+    FunctionSignatures ..> Signature : registro por nombre
+
+    note bottom of Checker
+      el gemelo del interprete a nivel de tipos:
+      donde el interprete contesta QUE VALOR tiene
+      una expresion, este contesta QUE TIPO, sin
+      ejecutar nada. es lo que hace que validation
+      valide semantica.
+      despacha con un when exhaustivo y no con un
+      registro, porque no varia por version: el
+      parser de cada version ya decide que
+      statements pueden existir.
+      limite conocido: readInput y readEnv no se
+      pueden validar del todo sin ejecutar
+    end note
+}
+
+' ------------------------------------------------------------
 package pipeline {
 
     interface TokenSource <<fun>> {
@@ -548,12 +811,43 @@ package pipeline {
     class StatementStream {
         -tokens: Iterator<Result<Token>>
         -parser: StatementParser
+        -boundary: StatementBoundary
+        -pending: Result<Token>?
         +hasNext(): Boolean
         +next(): Result<Statement>
     }
 
+    interface StatementBoundary <<fun>> {
+        +scan(): StatementScan
+    }
+
+    interface StatementScan {
+        +take(token: Token): StatementScan
+        +endsStatement(next: Token?): Boolean
+    }
+
+    class StatementBoundaries <<object>> {
+        +V1_0: StatementBoundary
+        +V1_1: StatementBoundary
+    }
+
     StatementStream --> TokenSource
     StatementStream --> StatementParser
+    StatementStream --> StatementBoundary
+    StatementBoundary ..> StatementScan : es una fabrica
+
+    note bottom of StatementBoundary
+      donde termina un statement es lo unico de
+      la gramatica que el pipeline no puede no
+      saber: arma el lote ANTES de parsear.
+      1.0: hasta el primer `;`.
+      1.1: un `;` adentro de un bloque no corta,
+      y el `}` exterior corta salvo que siga un
+      `else` - de ahi el token de lookahead.
+      StatementScan es un valor, no una maquina:
+      take contesta con el scan que leyo un token
+      mas, igual que el Cursor del formatter
+    end note
 
     note bottom of TokenSource
       declaradas por el consumidor.
@@ -567,6 +861,8 @@ package cli {
     enum Operation {
         VALIDATION
         EXECUTION
+        FORMATTING
+        ANALYZING
     }
 
     interface Program <<fun>> {
@@ -574,15 +870,40 @@ package cli {
     }
 
     class Cli {
-        -newStream: (Reader) -> StatementStream
+        -newStatements: (Path) -> StatementSource
         -newProgram: () -> Program
+        -newChecker: () -> Program
+        -newFormatting: (Path) -> Formatting
+        -newAnalyzer: () -> Analyzer
         -renderer: ErrorRenderer
         -progress: ProgressPrinter
-        -errors: Appendable
-        +run(operation: Operation, file: Path, version: String?): Result<Unit>
+        +run(operation: Operation, file: Path): Result<Unit>
+    }
+
+    interface StatementSource <<AutoCloseable>> {
+        +hasNext(): Boolean
+        +next(): Result<Statement>
+    }
+
+    interface Formatting <<AutoCloseable>> {
+        +format(): Result<Unit>
+    }
+
+    interface Analyzer <<fun>> {
+        +findings(statement: Statement): List<String>
     }
 
     Cli --> Program
+    Cli --> StatementSource
+    Cli --> Formatting
+    Cli --> Analyzer
+
+    note bottom of Cli
+      validation y execution son el MISMO
+      recorrido con un Program distinto: uno
+      chequea tipos, el otro ejecuta. Cli no sabe
+      cual le toco
+    end note
 
     class ProgressPrinter {
         -sink: Appendable
@@ -595,9 +916,30 @@ package cli {
 package app {
 
     class PrintScript <<composition root>> {
+        -dialect: Dialect
         +cli(): Cli
-        +supports(version: String): Boolean
     }
+
+    class Dialect {
+        +version: String
+        +recognizers: List<TokenRecognizer>
+        +syntaxes: List<StatementSyntax>
+        +parselets: List<PrefixParselet>
+        +executors: List<StatementExecutor>
+        +boundary: StatementBoundary
+        +signatures: Map<String, Signature>
+        +functions: (InputProvider, EnvironmentSource) -> Map<String, ValueFunction>
+        +of(version: String): Dialect?
+    }
+
+    PrintScript o--> Dialect
+
+    note right of Dialect
+      **una version del lenguaje son sus siete
+      catalogos**, no un flag que alguien consulta.
+      los strings "1.0" y "1.1" aparecen
+      unicamente aca
+    end note
 
     class PrintScriptCommand {
         +call(): Int
@@ -632,11 +974,16 @@ Lexer o--> TokenRecognizer
 Lexer ..> Token : construye
 TokenRecognizers ..> TokenRecognizer : lista por prioridad
 Parser o--> StatementSyntax
+Parser o--> PrefixParselet
 StatementSyntaxes ..> StatementSyntax : lista por prioridad
+PrefixParselets ..> PrefixParselet : lista por prioridad
+ExpressionParser o--> PrefixParselet
+ExpressionParser +-- ExpressionContext : lo implementa una inner class privada
 StatementSyntax ..> ParsingContext : cursor y expresiones
 StatementParser +-- ParsingContext : lo implementa una inner class privada
 StatementParser o--> ExpressionParser
 Interpreter o--> StatementExecutor
+Interpreter o--> ValueFunction
 Interpreter +-- ExecutionContext : lo implementa una inner class privada
 StatementExecutors ..> StatementExecutor : lista
 CallExecutor o--> Builtin
@@ -647,6 +994,10 @@ Parser *--> TokenCursor
 Parser ..> PrecedenceTable
 Parser ..> NumberCodec : convierte literales
 Parser ..> Statement : construye
+
+IfStatement o--> Expression
+IfStatement o--> Statement : dos bloques
+FunctionCall o--> Expression
 
 VariableDeclaration o--> Type
 VariableDeclaration o--> Expression
@@ -662,10 +1013,15 @@ Interpreter ..|> Program : via Main
 
 Interpreter *--> Environment
 Interpreter *--> ValueOps
+Interpreter --> InputProvider : via ValueFunctions
+Interpreter --> EnvironmentSource : via ValueFunctions
+
+Checker *--> Environment
+Checker ..> OperatorRules : la misma tabla que ValueOps
+Checker ..> Statement : recorre sin ejecutar
+Checker ..|> Program : via PrintScript
 Interpreter --> OutputEmitter
 Interpreter ..> Statement : ejecuta
-Environment o--> Slot
-Slot o--> Value
 ValueOps ..> OperatorRules
 ValueOps ..> NumberCodec : imprime numeros
 
@@ -674,13 +1030,15 @@ Cli --> ErrorRenderer
 Cli *--> ProgressPrinter
 
 PrintScript ..> Cli : construye
+PrintScript ..> Checker : construye
 PrintScript ..> Lexer : construye
 PrintScript ..> StatementStream : construye
 PrintScript ..> Interpreter : construye
 PrintScript ..> ConsoleOutput : construye
 PrintScript ..> TokenSource : Lexer::tokens
-PrintScript ..> StatementParser : Parser(StatementSyntaxes.DEFAULT)::parse
-PrintScript ..> Program : Interpreter::execute
+PrintScript ..> StatementParser : Parser(dialect.syntaxes, dialect.parselets)::parse
+PrintScript ..> StatementBoundary : dialect.boundary
+PrintScript ..> Program : Interpreter::execute y Checker::check
 
 Lexer ..> Result : devuelve
 Parser ..> Result : devuelve

@@ -63,16 +63,29 @@ data class LintConfig(
                 mandatoryVariableOrLiteralInReadInput = flag(settings, READ_INPUT),
             )
 
-        private fun identifierFormat(settings: JsonObject): IdentifierFormatConfig {
-            val config =
-                settings[IDENTIFIER_FORMAT] as? JsonObject
-                    ?: return IdentifierFormatConfig(enabled = false)
+        private fun identifierFormat(settings: JsonObject): IdentifierFormatConfig =
+            when (val value = settings[IDENTIFIER_FORMAT]) {
+                null ->
+                    IdentifierFormatConfig(enabled = false)
 
-            return IdentifierFormatConfig(
-                enabled = flag(config, ENABLED),
-                style = style(config),
-            )
-        }
+                is JsonObject ->
+                    IdentifierFormatConfig(
+                        enabled = flag(value, ENABLED),
+                        style = style(value),
+                    )
+
+                is JsonPrimitive ->
+                    IdentifierFormatConfig(
+                        enabled = true,
+                        style = styleOf(value.contentOrNull),
+                    )
+
+                else ->
+                    throw ConfigError(
+                        "'$IDENTIFIER_FORMAT' expects a style or a set of settings, " +
+                            "but the file says '$value'.",
+                    )
+            }
 
         private fun flag(
             settings: JsonObject,
@@ -89,15 +102,17 @@ data class LintConfig(
         private fun style(settings: JsonObject): IdentifierStyle {
             val value = settings[STYLE] ?: return IdentifierStyle.CAMEL_CASE
 
-            val style =
-                (value as? JsonPrimitive)?.contentOrNull
-                    ?: throw ConfigError(
-                        "'$STYLE' expects a valid identifier style.",
-                    )
+            return styleOf((value as? JsonPrimitive)?.contentOrNull)
+        }
 
-            return when (style.lowercase()) {
-                "camelcase", "camel_case" -> IdentifierStyle.CAMEL_CASE
-                "snakecase", "snake_case" -> IdentifierStyle.SNAKE_CASE
+        private fun styleOf(name: String?): IdentifierStyle {
+            val style =
+                name
+                    ?: throw ConfigError("'$STYLE' expects a valid identifier style.")
+
+            return when (style.lowercase().filter { it.isLetter() }) {
+                "camelcase" -> IdentifierStyle.CAMEL_CASE
+                "snakecase" -> IdentifierStyle.SNAKE_CASE
                 else ->
                     throw ConfigError(
                         "'$STYLE' expects 'camelCase' or 'snake_case', but the file says '$style'.",

@@ -3,7 +3,7 @@ plugins {
 }
 
 dependencies {
-    implementation(project(":common"))
+    api(project(":common"))
     api(project(":ast"))
     api(project(":report"))
 }

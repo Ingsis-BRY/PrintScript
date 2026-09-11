@@ -24,6 +24,9 @@ data class Config(
     val spaceAroundOperators: Boolean,
     val lineBreakAfterStatement: Boolean,
     val blankLinesAfterPrintln: Int?,
+    val braceSameLineAsIf: Boolean,
+    val braceBelowIfLine: Boolean,
+    val indentInsideBlock: Int?,
 ) {
     companion object {
         const val SPACE_BEFORE_COLON = "enforce-spacing-before-colon-in-declaration"
@@ -34,6 +37,9 @@ data class Config(
         const val SPACE_AROUND_OPERATORS = "mandatory-space-surrounding-operations"
         const val LINE_BREAK_AFTER_STATEMENT = "mandatory-line-break-after-statement"
         const val BLANK_LINES_AFTER_PRINTLN = "line-breaks-after-println"
+        const val BRACE_SAME_LINE_AS_IF = "if-brace-same-line"
+        const val BRACE_BELOW_IF_LINE = "if-brace-below-line"
+        const val INDENT_INSIDE_BLOCK = "indent-inside-if"
 
         val PRESERVING =
             Config(
@@ -45,9 +51,13 @@ data class Config(
                 spaceAroundOperators = false,
                 lineBreakAfterStatement = false,
                 blankLinesAfterPrintln = null,
+                braceSameLineAsIf = false,
+                braceBelowIfLine = false,
+                indentInsideBlock = null,
             )
 
         private val BLANK_LINES_ALLOWED = 0..2
+        private val INDENT_ALLOWED = 0..16
 
         fun read(stream: InputStream): Config = of(parse(stream.bufferedReader().readText()))
 
@@ -81,7 +91,11 @@ data class Config(
                 singleSpaceSeparation = flag(settings, SINGLE_SPACE_SEPARATION),
                 spaceAroundOperators = flag(settings, SPACE_AROUND_OPERATORS),
                 lineBreakAfterStatement = flag(settings, LINE_BREAK_AFTER_STATEMENT),
-                blankLinesAfterPrintln = count(settings, BLANK_LINES_AFTER_PRINTLN),
+                blankLinesAfterPrintln =
+                    count(settings, BLANK_LINES_AFTER_PRINTLN, BLANK_LINES_ALLOWED),
+                braceSameLineAsIf = flag(settings, BRACE_SAME_LINE_AS_IF),
+                braceBelowIfLine = flag(settings, BRACE_BELOW_IF_LINE),
+                indentInsideBlock = count(settings, INDENT_INSIDE_BLOCK, INDENT_ALLOWED),
             )
 
         private fun flag(
@@ -97,6 +111,7 @@ data class Config(
         private fun count(
             settings: JsonObject,
             key: String,
+            allowed: IntRange,
         ): Int? {
             val value = settings[key] ?: return null
             val number =
@@ -105,10 +120,10 @@ data class Config(
                         "'$key' expects a whole number, but the file says '$value'.",
                     )
 
-            if (number !in BLANK_LINES_ALLOWED) {
+            if (number !in allowed) {
                 throw ConfigError(
-                    "'$key' expects a number between ${BLANK_LINES_ALLOWED.first} " +
-                        "and ${BLANK_LINES_ALLOWED.last}, but the file says $number.",
+                    "'$key' expects a number between ${allowed.first} " +
+                        "and ${allowed.last}, but the file says $number.",
                 )
             }
 

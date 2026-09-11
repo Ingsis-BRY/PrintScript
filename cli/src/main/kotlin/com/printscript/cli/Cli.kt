@@ -23,6 +23,7 @@ enum class Operation {
 class Cli(
     private val newStatements: (Path) -> StatementSource,
     private val newProgram: () -> Program,
+    private val newChecker: () -> Program,
     private val newFormatting: (Path) -> Formatting,
     private val newAnalyzer: () -> Analyzer,
     private val renderer: ErrorRenderer,
@@ -35,8 +36,8 @@ class Cli(
         file: Path,
     ): Result<Unit> =
         when (operation) {
-            Operation.VALIDATION -> overStatements(file, ::validate)
-            Operation.EXECUTION -> overStatements(file, ::execute)
+            Operation.VALIDATION -> overStatements(file) { run(it, newChecker()) }
+            Operation.EXECUTION -> overStatements(file) { run(it, newProgram()) }
             Operation.FORMATTING -> format(file)
             Operation.ANALYZING -> overStatements(file, ::analyze)
         }
@@ -52,20 +53,10 @@ class Cli(
         return if (result is Failure) report(result) else result
     }
 
-    private fun validate(statements: StatementSource): Result<Unit> {
-        while (statements.hasNext()) {
-            when (val parsed = statements.next()) {
-                is Failure -> return report(parsed)
-                is Success -> progress.statementParsed(parsed.value.start)
-            }
-        }
-
-        return Success(Unit)
-    }
-
-    private fun execute(statements: StatementSource): Result<Unit> {
-        val program = newProgram()
-
+    private fun run(
+        statements: StatementSource,
+        program: Program,
+    ): Result<Unit> {
         while (statements.hasNext()) {
             when (val parsed = statements.next()) {
                 is Failure -> return report(parsed)

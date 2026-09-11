@@ -37,6 +37,10 @@ class ValueOps {
         return when (resultType) {
             Type.StringType -> Success(Value.StringValue(render(left) + render(right)))
             Type.NumberType -> arithmetic(operator, left, right, span)
+            Type.BooleanType ->
+                Failure(
+                    Diagnostic.IncompatibleOperands(operator, left.type, right.type, span),
+                )
         }
     }
 
@@ -68,8 +72,9 @@ class ValueOps {
 * renders a value to its printable text, using [NumberCodec] for numbers so
 * `3.0` prints as `3`. shared by [ValueOps] concatenation and `println`.
 */
-internal fun render(value: Value): String =
+fun render(value: Value): String =
     when (value) {
         is Value.NumberValue -> NumberCodec.render(value.value)
         is Value.StringValue -> value.value
+        is Value.BooleanValue -> value.value.toString()
     }

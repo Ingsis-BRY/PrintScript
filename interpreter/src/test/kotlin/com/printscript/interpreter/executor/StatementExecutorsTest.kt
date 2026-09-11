@@ -11,16 +11,16 @@ import kotlin.test.assertTrue
 
 class StatementExecutorsTest {
     @Test
-    fun `every statement in the hierarchy has an executor`() {
+    fun `every statement in the hierarchy has an executor in the newest version`() {
         val uncovered =
             Statement::class.sealedSubclasses.filter { subclass ->
-                StatementExecutors.DEFAULT.none { it.matches(sampleOf(subclass)) }
+                StatementExecutors.V1_1.none { it.matches(sampleOf(subclass)) }
             }
 
         assertEquals(
             emptyList(),
             uncovered,
-            "these statements have no executor in StatementExecutors.DEFAULT",
+            "these statements have no executor in StatementExecutors.V1_1",
         )
     }
 
@@ -36,13 +36,29 @@ class StatementExecutorsTest {
 
         return when (subclass) {
             Statement.VariableDeclaration::class ->
-                Statement.VariableDeclaration("x", Type.NumberType, null, start, end)
+                Statement.VariableDeclaration(
+                    name = "x",
+                    declaredType = Type.NumberType,
+                    initializer = null,
+                    mutable = true,
+                    start = start,
+                    end = end,
+                )
 
             Statement.Assignment::class ->
                 Statement.Assignment("x", argument, start, end)
 
             Statement.CallStatement::class ->
                 Statement.CallStatement("println", argument, start, end)
+
+            Statement.IfStatement::class ->
+                Statement.IfStatement(
+                    condition = argument,
+                    consequence = emptyList(),
+                    alternative = null,
+                    start = start,
+                    end = end,
+                )
 
             else ->
                 error("StatementExecutorsTest has no sample for ${subclass.simpleName}")

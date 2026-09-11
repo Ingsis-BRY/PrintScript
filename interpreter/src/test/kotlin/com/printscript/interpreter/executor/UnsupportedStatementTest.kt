@@ -2,12 +2,13 @@ package com.printscript.interpreter.executor
 
 import com.printscript.ast.Expression
 import com.printscript.ast.Statement
+import com.printscript.ast.Type
 import com.printscript.common.Position
 import com.printscript.interpreter.CollectingOutput
-import com.printscript.interpreter.Environment
 import com.printscript.interpreter.Interpreter
 import com.printscript.interpreter.Value
 import com.printscript.interpreter.ValueOps
+import com.printscript.language.Environment
 import com.printscript.report.Diagnostic
 import com.printscript.report.Failure
 import com.printscript.report.Result
@@ -30,7 +31,14 @@ class UnsupportedStatementTest {
 
     @Test
     fun `a statement no executor claims is reported instead of thrown`() {
-        val interpreter = Interpreter(Environment(), CollectingOutput(), ValueOps(), emptyList())
+        val interpreter =
+            Interpreter(
+                globalScope = Environment<Value>(),
+                output = CollectingOutput(),
+                valueOps = ValueOps(),
+                executors = emptyList(),
+                functions = emptyMap(),
+            )
 
         val error = assertIs<Failure>(interpreter.execute(assignment)).error
 
@@ -42,7 +50,7 @@ class UnsupportedStatementTest {
     fun `an executor handed a statement that is not its own reports it instead of throwing`() {
         val error =
             assertIs<Failure>(
-                CallExecutor(Builtins.DEFAULT).execute(assignment, StubContext()),
+                CallExecutor(Builtins.V1_0).execute(assignment, StubContext()),
             ).error
 
         assertIs<Diagnostic.UnsupportedStatement>(error)
@@ -50,10 +58,14 @@ class UnsupportedStatementTest {
     }
 
     private class StubContext : ExecutionContext {
-        override val environment: Environment = Environment()
+        override val environment: Environment<Value> = Environment<Value>()
 
-        override fun evaluate(expression: Expression): Result<Value> =
-            Success(Value.NumberValue(0.0))
+        override fun evaluate(
+            expression: Expression,
+            expected: Type?,
+        ): Result<Value> = Success(Value.NumberValue(0.0))
+
+        override fun executeBlock(statements: List<Statement>): Result<Unit> = Success(Unit)
 
         override fun emit(line: String) = Unit
     }

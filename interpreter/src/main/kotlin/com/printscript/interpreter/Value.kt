@@ -16,4 +16,10 @@ sealed interface Value {
     ) : Value {
         override val type: Type = Type.StringType
     }
+
+    data class BooleanValue(
+        val value: Boolean,
+    ) : Value {
+        override val type: Type = Type.BooleanType
+    }
 }

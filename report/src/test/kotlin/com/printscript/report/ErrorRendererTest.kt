@@ -77,6 +77,10 @@ class ErrorRendererTest {
         val expected =
             mapOf(
                 SyntaxSymbol.LET to "Expected 'let'.",
+                SyntaxSymbol.CONST to "Expected 'const'.",
+                SyntaxSymbol.IF to "Expected 'if'.",
+                SyntaxSymbol.LEFT_BRACE to "Expected '{'.",
+                SyntaxSymbol.RIGHT_BRACE to "Expected '}'.",
                 SyntaxSymbol.IDENTIFIER to "Expected an identifier.",
                 SyntaxSymbol.COLON to "Expected ':'.",
                 SyntaxSymbol.TYPE_NAME to "Expected a type.",
@@ -247,6 +251,79 @@ class ErrorRendererTest {
         assertEquals(
             "(2:9)-(2:14) Unsupported statement.",
             renderer.render(Diagnostic.UnsupportedStatement(span)),
+        )
+    }
+
+    @Test
+    fun `renders a condition that is not a boolean`() {
+        assertEquals(
+            "(2:9)-(2:14) An 'if' condition must be a boolean, but this one is a number.",
+            renderer.render(Diagnostic.NonBooleanCondition(Type.NumberType, span)),
+        )
+    }
+
+    @Test
+    fun `renders a constant that was reassigned`() {
+        assertEquals(
+            "(2:9)-(2:14) Constant 'b' cannot be reassigned.",
+            renderer.render(Diagnostic.ConstantReassignment("b", span)),
+        )
+    }
+
+    @Test
+    fun `renders a value that cannot be read as the expected type`() {
+        assertEquals(
+            "(2:9)-(2:14) Cannot read 'Hola' as a boolean.",
+            renderer.render(
+                Diagnostic.UninterpretableInput("Hola", Type.BooleanType, span),
+            ),
+        )
+    }
+
+    @Test
+    fun `renders input that was asked for and never came`() {
+        assertEquals(
+            "(2:9)-(2:14) No input available.",
+            renderer.render(Diagnostic.MissingInput(span)),
+        )
+    }
+
+    @Test
+    fun `renders an environment variable that is not defined`() {
+        assertEquals(
+            "(2:9)-(2:14) Environment variable 'NOT_SET' is not defined.",
+            renderer.render(Diagnostic.MissingEnvironmentVariable("NOT_SET", span)),
+        )
+    }
+
+    @Test
+    fun `renders the boolean type by name`() {
+        assertEquals(
+            "(2:9)-(2:14) An 'if' condition must be a boolean, but this one is a string.",
+            renderer.render(Diagnostic.NonBooleanCondition(Type.StringType, span)),
+        )
+    }
+
+    @Test
+    fun `renders an argument of the wrong type`() {
+        assertEquals(
+            "(2:9)-(2:14) Cannot pass a number to 'readInput', which expects a string.",
+            renderer.render(
+                Diagnostic.IncompatibleArgument(
+                    name = "readInput",
+                    expected = Type.StringType,
+                    actual = Type.NumberType,
+                    span = span,
+                ),
+            ),
+        )
+    }
+
+    @Test
+    fun `renders a condition that is not a variable`() {
+        assertEquals(
+            "(2:9)-(2:14) An 'if' condition must be a variable.",
+            renderer.render(Diagnostic.NonVariableCondition(span)),
         )
     }
 }

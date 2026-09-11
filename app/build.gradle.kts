@@ -3,6 +3,7 @@ plugins {
 }
 
 dependencies {
+    implementation(project(":checker"))
     implementation(project(":cli"))
     implementation(project(":formatter"))
     implementation(project(":pipeline"))
