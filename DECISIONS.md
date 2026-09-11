@@ -81,9 +81,9 @@ arma en un solo lugar. Cablearlo a mano obligaba a :report - un modulo hoja - a 
 un test porque termina el proceso. Cuando el cableado vivia en Main.kt habia que excluir el modulo
 entero, y eso dejaba los dos tests end to end sin contar para el umbral.
 
-Elegir la version del lenguaje es una decision del composition root, no del CLI: PrintScript.supports
-la contesta antes de construir un solo objeto. Cuando llegue la 1.1 eso pasa a devolver el grafo que
-corresponde - otro catalogo de recognizers, otro parser, otro interprete - en lugar de un booleano.
+Elegir la version del lenguaje es una decision del composition root, no del CLI. Con la 1.1 eso
+dejo de ser un booleano y paso a ser Dialect.of(version), que devuelve el grafo que corresponde -
+otros catalogos de recognizers, de sintaxis, de executors - antes de construir un solo objeto.
 Antes vivia adentro de Cli como un require() que tiraba IllegalArgumentException y que main atajaba
 para traducirlo a un codigo de salida: era la ultima excepcion usada como control de flujo, en un
 codigo cuya primera invariante es que los errores son datos.
@@ -162,3 +162,84 @@ vivia suelto en PrintScript.kt, que es el composition root y no tendria que reda
 Cli declara Analyzer, la interfaz de lo que necesita - dame los hallazgos de esta sentencia - y no
 conoce :linter. El sink de stdout paso a llamarse out porque ahora lleva dos cosas: el fuente
 formateado y los hallazgos.
+
+Una version del lenguaje es que entradas tiene cada catalogo, no un flag que alguien consulta.
+Dialect, en :app, agrupa los siete que la definen: recognizers, sintaxis, parselets, corte de
+sentencias, executors, funciones-valor y firmas. PrintScript arma el mismo grafo para las dos
+versiones; lo unico que cambia es que hay adentro. La consecuencia verificable es que los strings
+"1.0" y "1.1" aparecen unicamente en Dialect.kt: :lexer no sabe que existen las versiones, tiene
+dos listas. Por eso `const` es un error de sintaxis en 1.0 sin que nadie escriba una comparacion -
+V1_0 no tiene recognizer para la palabra, asi que sale como identificador y el parser la rechaza.
+Descartado: pasarle la version a cada modulo. Un enum compartido obligaria a los siete a conocer el
+concepto de version, que es mas acoplamiento del que saca.
+La contra honesta: nada verifica que los siete catalogos de una version existan y sean coherentes.
+Si alguien agrega V1_2 a seis de siete, no se entera hasta runtime. Dialect es el unico lugar que
+los aparea, y lo hace a mano.
+
+Que puede *abrir* una expresion es un registro; que operador liga mas fuerte es una tabla.
+PrefixParselets es el tercer catalogo con la misma forma que los otros dos, y existe porque el
+conjunto de cosas que abren una expresion crece con el lenguaje: un literal booleano en 1.1, una
+llamada en 1.1. Los operadores infijos deliberadamente no son parselets - su precedencia la lee un
+solo loop de PrecedenceTable, y no hay comportamiento por operador que registrar. El Pratt queda
+partido en las dos mitades que la gramatica realmente tiene, no en dos mitades simetricas.
+
+Donde termina una sentencia salio de StatementStream y paso a ser un catalogo. Es lo unico de la
+gramatica que el pipeline no puede no saber, porque arma el lote antes de parsear, y con `if` dejo
+de ser "hasta el primer ;": un `;` adentro de un bloque no corta, y el `}` que cierra el bloque
+exterior corta salvo que siga un `else`. De ahi el unico token de lookahead que el stream sostiene.
+StatementScan es un valor y no una maquina: take contesta con el scan que leyo un token mas, igual
+que el Cursor del formatter, asi un boundary que cuenta llaves no se filtra a la sentencia siguiente.
+
+El scope viaja como argumento y no como campo. Un bloque corre en un Environment hijo, pero el
+interprete no tiene un "scope actual" que mover y volver a poner: cada bloque recibe su propio
+Context. No hay nada que restaurar, y un fallo no puede dejar el scope equivocado puesto. Se hizo
+asi despues de escribirlo con un var y un try/finally, que funcionaba pero rompia la invariante que
+este documento venia sosteniendo desde 1.0 - el Environment es el unico componente mutable.
+
+El tipo esperado baja en la evaluacion. evaluate recibe el tipo que el resultado tiene que llenar.
+Casi toda expresion lo ignora, porque su tipo lo decide lo que es; readInput y readEnv son la
+excepcion: lo que devuelven es texto hasta que algo dice que se suponia que era. Ese algo es la
+declaracion, la asignacion, o println, que pasa string porque todo lo que imprime ya es texto.
+El limite conocido: adentro de una expresion binaria la expectativa no baja, asi que
+`let n: number = readInput("a") + 1;` lee la entrada como string. Es un caso que la consigna no
+define y se deja escrito en vez de disimulado.
+
+El prompt de readInput sale por el mismo emitter que println. Es salida, y el programa tiene una
+sola; el valor entra por InputProvider, declarada por el consumidor igual que OutputEmitter, asi
+que un test le pasa respuestas preparadas sin tocar el stdin del proceso. InputProvider.read no
+recibe el prompt: lo imprime quien llama, y un parametro que ninguna implementacion usa es
+generalidad especulativa.
+
+validation valida semantica, y lo hace siendo la misma funcion que execution con otro Program.
+Hasta la 1.1 solo parseaba, asi que `let x: number = "hola";` salia con codigo 0 pese a que la
+consigna pide "un modo que solo valide la sintaxis y semantica del archivo". El :checker es el
+gemelo del interprete a nivel de tipos: donde el interprete contesta que valor tiene una expresion,
+el checker contesta que tipo, sin ejecutar nada. Cli perdio codigo en vez de ganarlo - validate y
+execute eran el mismo loop.
+Los dos comparten las reglas de alcance a traves de Environment<V>, que se parametrizo y se mudo a
+:language. El interprete guarda un Value; el checker guarda Unit, porque a la hora de chequear el
+unico hecho que sobrevive es *que* el nombre fue asignado - el tipo de cada slot ya esta en el slot.
+El tipo se pasa en cada bind en vez de leerse del V, porque un store que sepa tipar su contenido no
+podria guardar un Unit.
+Descartado: un TypeScope aparte. Duplicaba child(), ownerOf() y el shadowing, que es exactamente la
+logica que mas cuesta hacer bien dos veces.
+El checker despacha con un when exhaustivo y no con un registro, a diferencia de las otras etapas:
+no varia por version, porque el parser de cada version ya decide que sentencias pueden existir. Lo
+que si varia son las firmas de las funciones, y eso si es un catalogo.
+Limite conocido: readInput y readEnv no se pueden validar del todo sin ejecutar. Se valida que la
+funcion exista, que su argumento sea un string y que el tipo a llenar sea uno que el lenguaje tiene;
+un valor que no se pueda leer sigue siendo un error de ejecucion, que es lo que la consigna pide.
+
+La condicion de un `if` tiene que ser una variable, y se eligio la lectura literal de la consigna.
+La frase es "Solo con variables 'boolean' como argumento". La alternativa - aceptar cualquier
+expresion booleana - es estrictamente mas util y no rompe ningun programa valido, pero la letra dice
+variables y la unica razon para desviarse seria la comodidad. IfSyntax rechaza cualquier otra cosa
+con NonVariableCondition, en el parser; que ademas sea boolean lo verifica el checker, en tipos, y
+el interprete, en ejecucion. Las tres capas dicen lo mismo en el momento en que cada una puede.
+
+La regla de argumentos del linter es lista blanca y no lista negra. Era
+`expression !is BinaryExpression`, que aceptaba todo lo que no fuera una binaria - y cuando 1.1
+sumo FunctionCall, `println(readInput("x"))` paso a colarse en silencio. Ahora enumera lo que si
+vale (nombre, numero, string, booleano) en un when exhaustivo sobre la jerarquia sellada, asi que
+una expresion nueva rompe la compilacion ahi y obliga a decidir de que lado cae. La leccion es la
+de siempre en este codigo: lo que se enumera es lo que se permite, no lo que se prohibe.
