@@ -24,8 +24,14 @@ internal class QueuedInput(
     answers: List<String>,
 ) : InputProvider {
     private val remaining = ArrayDeque(answers)
+    private val asked = mutableListOf<String>()
 
-    override fun read(): String? = remaining.removeFirstOrNull()
+    override fun read(prompt: String): String? {
+        asked.add(prompt)
+        return remaining.removeFirstOrNull()
+    }
+
+    fun prompts(): List<String> = asked.toList()
 }
 
 internal class FixedEnvironment(

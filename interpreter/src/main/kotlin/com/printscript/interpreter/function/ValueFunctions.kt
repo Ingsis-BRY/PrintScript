@@ -19,13 +19,9 @@ object ValueFunctions {
         )
 
     private fun readInput(input: InputProvider): ValueFunction =
-        ValueFunction { argument, expected, span, context ->
-            val prompt = render(argument)
-
-            context.emit(prompt)
-
+        ValueFunction { argument, expected, span, _ ->
             val answer =
-                input.read()
+                input.read(render(argument))
                     ?: return@ValueFunction Failure(Diagnostic.MissingInput(span))
 
             coerce(answer, expected, span)
