@@ -696,7 +696,7 @@ package interpreter {
     }
 
     interface InputProvider <<fun>> {
-        +read(): String?
+        +read(prompt: String): String?
     }
     class ConsoleInput <<object>> implements InputProvider
     class NoInput <<object>> implements InputProvider
@@ -714,9 +714,9 @@ package interpreter {
       readers es una fabrica y no una constante:
       readInput y readEnv necesitan colaboradores
       que recien existen cuando la corrida tiene
-      de donde leer. el prompt sale por el mismo
-      emitter que println: es salida, y el
-      programa tiene una sola
+      de donde leer. el prompt viaja en
+      InputProvider.read(prompt), no por el
+      emitter: quien contesta ve la pregunta
     end note
 
     interface Builtin <<fun>> {

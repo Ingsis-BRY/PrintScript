@@ -1,13 +1,16 @@
 package com.printscript.interpreter
 
 fun interface InputProvider {
-    fun read(): String?
+    fun read(prompt: String): String?
 }
 
 object NoInput : InputProvider {
-    override fun read(): String? = null
+    override fun read(prompt: String): String? = null
 }
 
 object ConsoleInput : InputProvider {
-    override fun read(): String? = readlnOrNull()
+    override fun read(prompt: String): String? {
+        println(prompt)
+        return readlnOrNull()
+    }
 }

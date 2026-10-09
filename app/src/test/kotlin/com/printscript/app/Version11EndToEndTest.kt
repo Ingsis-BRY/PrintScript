@@ -269,17 +269,24 @@ class Version11EndToEndTest {
     }
 
     @Test
-    fun `readInput prints its prompt through the program output and reads a line`() {
-        val output =
-            execute11(
-                """
-                const name: string = readInput("Name:");
-                println("Hello " + name + "!");
-                """.trimIndent(),
-                input = listOf("world"),
-            )
+    fun `readInput asks the input provider with its prompt and reads a line`() {
+        val input = QueuedInput(listOf("world"))
+        val run = Run(version = "1.1", input = input)
 
-        assertEquals(listOf("Name:", "Hello world!"), output)
+        assertIs<Success<Unit>>(
+            run.cli.run(
+                Operation.EXECUTION,
+                sourceFile(
+                    """
+                    const name: string = readInput("Name:");
+                    println("Hello " + name + "!");
+                    """.trimIndent(),
+                ),
+            ),
+        )
+
+        assertEquals(listOf("Name:"), input.prompts())
+        assertEquals(listOf("Hello world!"), run.output.lines())
     }
 
     @Test
@@ -293,7 +300,7 @@ class Version11EndToEndTest {
                 input = listOf("41"),
             )
 
-        assertEquals(listOf("How many?", "42"), output)
+        assertEquals(listOf("42"), output)
     }
 
     @Test
@@ -309,7 +316,7 @@ class Version11EndToEndTest {
                 input = listOf("true"),
             )
 
-        assertEquals(listOf("Sure?", "yes"), output)
+        assertEquals(listOf("yes"), output)
     }
 
     @Test
@@ -331,7 +338,7 @@ class Version11EndToEndTest {
                 input = listOf("42"),
             )
 
-        assertEquals(listOf("Say:", "42"), output)
+        assertEquals(listOf("42"), output)
     }
 
     @Test

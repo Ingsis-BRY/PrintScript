@@ -204,11 +204,13 @@ El limite conocido: adentro de una expresion binaria la expectativa no baja, asi
 `let n: number = readInput("a") + 1;` lee la entrada como string. Es un caso que la consigna no
 define y se deja escrito en vez de disimulado.
 
-El prompt de readInput sale por el mismo emitter que println. Es salida, y el programa tiene una
-sola; el valor entra por InputProvider, declarada por el consumidor igual que OutputEmitter, asi
-que un test le pasa respuestas preparadas sin tocar el stdin del proceso. InputProvider.read no
-recibe el prompt: lo imprime quien llama, y un parametro que ninguna implementacion usa es
-generalidad especulativa.
+El prompt de readInput viaja con la pregunta: InputProvider.read(prompt) lo recibe y el emitter
+no lo ve. En la 1.1.0 salia por el mismo emitter que println y read no recibia nada, porque
+ninguna implementacion de aca lo usaba. Aparecio un consumidor externo que separa la salida del
+programa de lo que se le pregunta al usuario, y por el emitter un prompt es indistinguible de un
+println. Quien contesta necesita ver la pregunta; ConsoleInput la imprime antes de leer, asi que
+la consola se ve igual que antes. InputProvider sigue declarada por el consumidor, igual que
+OutputEmitter, y un test le pasa respuestas preparadas sin tocar el stdin del proceso.
 
 validation valida semantica, y lo hace siendo la misma funcion que execution con otro Program.
 Hasta la 1.1 solo parseaba, asi que `let x: number = "hola";` salia con codigo 0 pese a que la

@@ -78,12 +78,26 @@ class ValueFunctionsTest {
     }
 
     @Test
-    fun `readInput emits its prompt before asking for the value`() {
+    fun `readInput hands its prompt to the input provider`() {
+        val asked = mutableListOf<String>()
+        val provider =
+            InputProvider { prompt ->
+                asked.add(prompt)
+                "world"
+            }
+
+        call(functions(provider)["readInput"]!!, "Name:", Type.StringType)
+
+        assertEquals(listOf("Name:"), asked)
+    }
+
+    @Test
+    fun `readInput emits nothing, so its prompt never reads as program output`() {
         val context = RecordingContext()
 
         call(readInput("world"), "Name:", Type.StringType, context)
 
-        assertEquals(listOf("Name:"), context.emitted)
+        assertEquals(emptyList(), context.emitted)
     }
 
     @Test
@@ -209,6 +223,6 @@ class ValueFunctionsTest {
 
     @Test
     fun `the empty provider always has nothing`() {
-        assertEquals(null, NoInput.read())
+        assertEquals(null, NoInput.read("Name:"))
     }
 }
