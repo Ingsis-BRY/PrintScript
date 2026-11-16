@@ -88,10 +88,25 @@ class Formatter(
         next: Token,
     ): String =
         when {
-            next !is Token.LeftBraceToken -> originalGap(previous, next)
-            config.braceSameLineAsIf -> SPACE
-            config.braceBelowIfLine -> LINE_BREAK
+            next is Token.LeftBraceToken && config.braceSameLineAsIf -> SPACE
+            next is Token.LeftBraceToken && config.braceBelowIfLine -> LINE_BREAK
+            config.lineBreakAfterStatement && startsLine(previous, next) -> LINE_BREAK
             else -> originalGap(previous, next)
+        }
+
+    /**
+     * a brace is a statement boundary too: a block's first statement starts its
+     * own line, and so does whatever follows a closed if, except its else.
+     * an empty block stays as written
+     */
+    private fun startsLine(
+        previous: Token,
+        next: Token,
+    ): Boolean =
+        when (previous) {
+            is Token.LeftBraceToken -> next !is Token.RightBraceToken
+            is Token.RightBraceToken -> next !is Token.ElseToken
+            else -> false
         }
 
     private fun withinStatement(
