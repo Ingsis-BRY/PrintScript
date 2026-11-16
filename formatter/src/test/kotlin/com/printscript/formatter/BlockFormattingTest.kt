@@ -176,4 +176,69 @@ class BlockFormattingTest {
 
         kotlin.test.assertContains(error.message.orEmpty(), "indent-inside-if")
     }
+
+    private val breaksAndIndent =
+        """{ "mandatory-line-break-after-statement": true, "if-brace-same-line": true, "indent-inside-if": 4 }"""
+
+    @Test
+    fun `a block written on one line opens onto its own lines`() {
+        val formatted =
+            formatted("let a: boolean = true;if(a){println(1);println(2);}", breaksAndIndent)
+
+        assertEquals(
+            "let a: boolean = true;\nif(a) {\n    println(1);\n    println(2);\n}",
+            formatted,
+        )
+    }
+
+    @Test
+    fun `a statement after a closed if starts its own line`() {
+        val formatted =
+            formatted("let a: boolean = true;if(a){println(1);}println(2);", breaksAndIndent)
+
+        assertEquals("let a: boolean = true;\nif(a) {\n    println(1);\n}\nprintln(2);", formatted)
+    }
+
+    @Test
+    fun `an else stays on the line of the brace that closes the if`() {
+        val formatted =
+            formatted(
+                "let a: boolean = true;if(a){println(1);} else {println(2);}",
+                breaksAndIndent,
+            )
+
+        assertEquals(
+            "let a: boolean = true;\nif(a) {\n    println(1);\n} else {\n    println(2);\n}",
+            formatted,
+        )
+    }
+
+    @Test
+    fun `nested blocks written on one line close one per line`() {
+        val formatted =
+            formatted("let a: boolean = true;if(a){if(a){println(1);}}", breaksAndIndent)
+
+        assertEquals(
+            "let a: boolean = true;\nif(a) {\n    if(a) {\n        println(1);\n    }\n}",
+            formatted,
+        )
+    }
+
+    @Test
+    fun `a brace below the if still opens the block onto its own line`() {
+        val formatted =
+            formatted(
+                "let a: boolean = true;if(a){println(1);}",
+                """{ "mandatory-line-break-after-statement": true, "if-brace-below-line": true, "indent-inside-if": 2 }""",
+            )
+
+        assertEquals("let a: boolean = true;\nif(a)\n{\n  println(1);\n}", formatted)
+    }
+
+    @Test
+    fun `without the line break rule a one line block is left alone`() {
+        val source = "let a: boolean = true;\nif (a) { println(1); } println(2);"
+
+        assertEquals(source, formatted(source, """{ "indent-inside-if": 4 }"""))
+    }
 }
